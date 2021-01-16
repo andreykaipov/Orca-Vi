@@ -23,15 +23,16 @@
     <script type="text/javascript" src="desktop/sources/scripts/commander.js"></script>
     <script type="text/javascript" src="desktop/sources/scripts/cursor.js"></script>
     <script type="text/javascript" src="desktop/sources/scripts/client.js"></script>
+    <script type="text/javascript" src="desktop/sources/scripts/vi.js"></script>
     <title>Orca</title>
   </head>
   <body>
     <script>
       'use strict'
 
-      const client = new Client()
+      const client = new Client(document.body)
 
-      client.install(document.body)
+      client.install()
 
       window.addEventListener('load', () => {
         client.start()

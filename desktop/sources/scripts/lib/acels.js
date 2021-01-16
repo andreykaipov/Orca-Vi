@@ -15,6 +15,10 @@ function Acels (client) {
     this.all[accelerator] = { cat, name, downfn, upfn, accelerator }
   }
 
+  this.unset = (...accelerators) => {
+    accelerators.forEach(it => delete this.all[it])
+  }
+
   this.add = (cat, role) => {
     this.all[':' + role] = { cat, name: role, role }
   }
@@ -37,10 +41,10 @@ function Acels (client) {
     if ((event.ctrlKey || event.metaKey) && event.shiftKey) {
       return `CmdOrCtrl+Shift+${accelerator}`
     }
-    if (event.shiftKey && event.key.toUpperCase() !== event.key) {
+    if (event.shiftKey && event.key.toUpperCase() == event.key) {
       return `Shift+${accelerator}`
     }
-    if (event.altKey && event.key.length !== 1) {
+    if (event.altKey /*&& event.key.length !== 1*/) {
       return `Alt+${accelerator}`
     }
     if (event.ctrlKey || event.metaKey) {

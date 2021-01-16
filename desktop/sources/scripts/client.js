@@ -10,8 +10,11 @@
 /* global Commander */
 /* global Clock */
 /* global Theme */
+/* global Vi Handler */
 
-function Client () {
+function Client (body) {
+  this.body = document.body
+
   this.version = 178
   this.library = library
 
@@ -25,6 +28,7 @@ function Client () {
   this.cursor = new Cursor(this)
   this.commander = new Commander(this)
   this.clock = new Clock(this)
+  this.vi = new Vi(this)
 
   // Settings
   this.scale = window.devicePixelRatio
@@ -38,7 +42,7 @@ function Client () {
   this.el = document.createElement('canvas')
   this.context = this.el.getContext('2d')
 
-  this.install = (host) => {
+  this.install = (host = this.body) => {
     host.appendChild(this.el)
     this.theme.install(host)
 
@@ -73,6 +77,7 @@ function Client () {
     this.acels.set('Project', 'Toggle Commander', 'CmdOrCtrl+K', () => { this.commander.start() })
     this.acels.set('Project', 'Run Commander', 'Enter', () => { this.commander.run() })
 
+    this.acels.set('Cursor', 'Toggle Vi Mode', 'CmdOrCtrl+M', () => { this.vi.toggle() })
     this.acels.set('Cursor', 'Toggle Insert Mode', 'CmdOrCtrl+I', () => { this.cursor.ins = !this.cursor.ins })
     this.acels.set('Cursor', 'Toggle Block Comment', 'CmdOrCtrl+/', () => { this.cursor.comment() })
     this.acels.set('Cursor', 'Trigger Operator', 'CmdOrCtrl+P', () => { this.cursor.trigger() })
@@ -122,7 +127,7 @@ function Client () {
     this.acels.set('Communication', 'Choose UDP Port', 'alt+U', () => { this.commander.start('udp:') })
 
     this.acels.install(window)
-    this.acels.pipe(this.commander)
+    this.acels.pipe = this.commander
   }
 
   this.start = () => {
@@ -335,6 +340,9 @@ function Client () {
       this.write(`${this.clock}`, this.grid.w * 3, this.orca.h + 1, this.grid.w, this.clock.isPuppet ? 3 : this.io.midi.isClock ? 11 : this.clock.isPaused ? 20 : 2)
       this.write(`${display(Object.keys(this.orca.variables).join(''), this.orca.f, this.grid.w - 1)}`, this.grid.w * 4, this.orca.h + 1, this.grid.w - 1)
       this.write(this.orca.f < 250 ? `> ${this.io.midi.toOutputString()}` : '', this.grid.w * 5, this.orca.h + 1, this.grid.w * 4)
+
+      this.write(this.vi.inspectMode(), this.grid.w * 0, this.orca.h + 2, this.grid.w * 2)
+      this.write(this.vi.inspectChord(), this.grid.w * 2, this.orca.h + 2, this.grid.w * 2)
     }
   }
 
