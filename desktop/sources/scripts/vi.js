@@ -12,7 +12,7 @@
  */
 function Vi (client) {
   this.mode = null
-  this.chordPrefix = null
+  this.chordPrefix = ''
   this.originalCommanderKeyDownHandler = client.commander.onKeyDown
   this.originalCommanderKeyUpHandler = client.commander.onKeyUp
 
@@ -31,14 +31,16 @@ function Vi (client) {
     }
   }
 
-  this.resetChord = () => this.chordPrefix = null
+  this.resetChord = () => this.chordPrefix = ''
   this.resetAcels = () => {
     client.acels.unset(
+      /* common      */ 'Escape',
       /* normal mode */ 'I', 'O', 'Shift+O', 'A',
-                        'X',
+                        'X', 'D',
                         'H', 'J', 'K', 'L', 'Alt+H', 'Alt+J', 'Alt+K', 'Alt+L', '0', 'Shift+$',
                         'W', 'E',
-      /* insert mode */ 'Escape', 'Space', 'Delete', 'Enter',
+                        '1', '2', '3', '4', '5', '6', '7', '8', '9',
+      /* insert mode */ 'Space', 'Delete', 'Enter',
     )
 
     // We overwrite these so they don't work in any mode
@@ -49,6 +51,7 @@ function Vi (client) {
 
   this.switchTo = (mode) => {
     this.resetAcels()
+    this.resetChord()
 
     switch (mode) {
       case "NORMAL": this.normalMode(); break
@@ -74,16 +77,25 @@ function Vi (client) {
       client.orca.writeBlock(client.cursor.x, client.cursor.y, this.lineRightOfCursor().substring(1))
       client.history.record(client.orca.s)
     })
+    client.acels.set('Vi', 'Delete chord', 'D', () => {
+      if (this.chordPrefix.endsWith('d')) {
+        const sliced = this.chordPrefix.slice(0, -1) || 1
+        if (!isNaN(sliced)) {
+          ;[...Array(sliced*1)].forEach((_,i) => client.orca.writeBlock(0, client.cursor.y+i, ".".repeat(client.orca.w)))
+          this.resetChord()
+        } else {
+          console.error(`What else is it then? ${sliced}`)
+        }
+      } else {
+        this.chordPrefix += 'd'
+      }
+    })
 
     // simple movements
     client.acels.set('Vi', 'Move West', 'H', () => { client.cursor.move(-1*(this.chordPrefix||1), 0); this.resetChord() })
     client.acels.set('Vi', 'Move South', 'J', () => { client.cursor.move(0, -1*(this.chordPrefix||1)); this.resetChord() })
     client.acels.set('Vi', 'Move North', 'K', () => { client.cursor.move(0, 1*(this.chordPrefix||1)); this.resetChord() })
     client.acels.set('Vi', 'Move East', 'L', () => { client.cursor.move(1*(this.chordPrefix||1), 0); this.resetChord() })
-    client.acels.set('Vi', 'Move West(Leap)', 'Alt+H', () => { client.cursor.move(-client.grid.w, 0) })
-    client.acels.set('Vi', 'Move South(Leap)', 'Alt+J', () => { client.cursor.move(0, -client.grid.h) })
-    client.acels.set('Vi', 'Move North(Leap)', 'Alt+K', () => { client.cursor.move(0, client.grid.h) })
-    client.acels.set('Vi', 'Move East(Leap)', 'Alt+L', () => { client.cursor.move(client.grid.w, 0) })
     client.acels.set('Vi', 'Start of line', '0', () => { this.chordPrefix ? this.chordPrefix = this.chordPrefix+'0' : client.cursor.moveTo(0, client.cursor.y) })
     client.acels.set('Vi', 'End of line', 'Shift+$', () => { client.cursor.moveTo(client.orca.w, client.cursor.y) })
 
@@ -91,23 +103,26 @@ function Vi (client) {
     client.acels.set('Vi', 'Jump to word beginning', 'W', () => this.jumpWordBeginning())
     client.acels.set('Vi', 'Jump to word ending', 'E', () => this.jumpWordEnding())
 
-    // chords? idk guess they're like their own little mini mode in a way
-    client.acels.set('Vi', 'Delete chord', 'D', () => {
-      this.chordPrefix = 'd'
-      // client.acels.set('Vi', '')
-    })
-    
+    // just some extra stuff
+    client.acels.set('Vi', 'Move West(Leap)', 'Alt+H', () => { client.cursor.move(-client.grid.w, 0) })
+    client.acels.set('Vi', 'Move South(Leap)', 'Alt+J', () => { client.cursor.move(0, -client.grid.h) })
+    client.acels.set('Vi', 'Move North(Leap)', 'Alt+K', () => { client.cursor.move(0, client.grid.h) })
+    client.acels.set('Vi', 'Move East(Leap)', 'Alt+L', () => { client.cursor.move(client.grid.w, 0) })
+
     client.acels.set('Vi', 'Normal mode', 'Escape', () => {
       this.resetChord()
     })
 
-    client.commander.onKeyDown = (e) => {
-      if (!isNaN(e.key)) {
-        if (!isNaN(this.chordPrefix)) {
-          this.chordPrefix = this.chordPrefix ? this.chordPrefix + e.key : e.key
-          // this.normalMode()
+    ;[1,2,3,4,5,6,7,8,9].forEach(n => {
+      client.acels.set('Vi', `${n}`, n, () => {
+        if (!isNaN(this.chordPrefix)) { // isNaN('') is false because JavaScript <3
+          this.chordPrefix += `${n}`
         }
-      }
+      })
+    })
+
+    // chords? idk guess they're like their own little mini mode in a way
+    client.commander.onKeyDown = (e) => {
       e.stopPropagation()
     }
   }
@@ -125,18 +140,20 @@ function Vi (client) {
       client.cursor.move(-1, 0)
     })
 
-    client.acels.set('Vi', 'Space', 'Space', () => {
-      client.orca.write(client.cursor.x, client.cursor.y, '.')
-      client.cursor.move(1, 0)
-    })
-
     // just like x in normal mode
     client.acels.set('Vi', 'Erase Forward', 'Delete', () => {
       client.orca.writeBlock(client.cursor.x, client.cursor.y, this.lineRightOfCursor())
       client.history.record(client.orca.s)
     })
 
-    client.acels.set('Vi', 'Next line', 'Enter', () => { client.cursor.move(0, -1) })
+    client.acels.set('Vi', 'Next line', 'Enter', () => { client.cursor.moveTo(0, client.cursor.y+1) })
+
+    // Handled similarly as any key in the commandar below, but has to be an acel to override the existing
+    client.acels.set('Vi', 'Space', 'Space', () => {
+      client.orca.writeBlock(client.cursor.x+1, client.cursor.y, this.lineRightOfCursor())
+      client.orca.write(client.cursor.x, client.cursor.y, '.')
+      client.cursor.move(1, 0)
+    })
 
     client.commander.onKeyDown = (e) => {
       if (e.ctrlKey || e.metaKey) { return }
