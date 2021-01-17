@@ -23,6 +23,21 @@ function Cursor (client) {
     document.oncontextmenu = this.onContextMenu
   }
 
+  this.selectNoUpdate = (x = this.x, y = this.y, w = this.w, h = this.h) => {
+    if (isNaN(x) || isNaN(y) || isNaN(w) || isNaN(h)) { return }
+    const rect = { x: clamp(parseInt(x), 0, client.orca.w - 1), y: clamp(parseInt(y), 0, client.orca.h - 1), w: clamp(parseInt(w), -this.x, client.orca.w - 1), h: clamp(parseInt(h), -this.y, client.orca.h - 1) }
+
+    if (this.x === rect.x && this.y === rect.y && this.w === rect.w && this.h === rect.h) {
+      return // Don't update when unchanged
+    }
+
+    this.x = rect.x
+    this.y = rect.y
+    this.w = rect.w
+    this.h = rect.h
+    this.calculateBounds()
+  }
+
   this.select = (x = this.x, y = this.y, w = this.w, h = this.h) => {
     if (isNaN(x) || isNaN(y) || isNaN(w) || isNaN(h)) { return }
     const rect = { x: clamp(parseInt(x), 0, client.orca.w - 1), y: clamp(parseInt(y), 0, client.orca.h - 1), w: clamp(parseInt(w), -this.x, client.orca.w - 1), h: clamp(parseInt(h), -this.y, client.orca.h - 1) }
@@ -80,12 +95,12 @@ function Cursor (client) {
     return client.orca.glyphAt(this.x, this.y)
   }
 
-  this.write = (g) => {
+  this.write = (g, record=true) => {
     if (!client.orca.isAllowed(g)) { return }
     if (client.orca.write(this.x, this.y, g) && this.ins) {
       this.move(1, 0)
     }
-    client.history.record(client.orca.s)
+    if (record) client.history.record(client.orca.s)
   }
 
   this.erase = () => {

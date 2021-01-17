@@ -1,8 +1,8 @@
 'use strict'
 
-function History () {
+function History (client) {
   this.index = 0
-  this.frames = []
+  this.frames = [] // {board:"...", cursor:{x:1, y:2}}
   this.host = null
   this.key = null
 
@@ -31,25 +31,34 @@ function History () {
   this.undo = function () {
     if (this.index === 0) { console.warn('History', 'Reached beginning'); return }
     this.index = clamp(this.index - 1, 0, this.frames.length - 2)
-    this.apply(this.frames[this.index])
+
+    const frame = this.frames[this.index]
+    this.apply(frame.board)
+    client.cursor.moveTo(frame.cursor.x, frame.cursor.y)
   }
 
   this.redo = function () {
     if (this.index + 1 > this.frames.length - 1) { console.warn('History', 'Reached end'); return }
     this.index = clamp(this.index + 1, 0, this.frames.length - 1)
-    this.apply(this.frames[this.index])
+
+    const frame = this.frames[this.index]
+    this.apply(frame.board)
+    client.cursor.moveTo(frame.cursor.x, frame.cursor.y)
   }
 
   this.apply = function (f) {
     if (!this.host[this.key]) { console.log(`Unknown binding to key ${this.key}`); return }
     if (!f || f.length !== this.host[this.key].length) { return }
-    this.host[this.key] = this.frames[this.index]
+    this.host[this.key] = this.frames[this.index].board
   }
 
   this.append = function (data) {
     if (!data) { return }
-    if (this.frames[this.index - 1] && this.frames[this.index - 1] === data) { return }
-    this.frames.push(data)
+    if (this.frames[this.index - 1] && this.frames[this.index - 1].board === data) { return }
+
+    const {x,y} = client.cursor
+    const cursor = {x,y}
+    this.frames.push({board: data, cursor: cursor})
   }
 
   this.fork = function (data) {

@@ -21,6 +21,7 @@ function Vi (client) {
 
   this.toggle = () => {
     if (this.mode == null) {
+      client.history.record(client.orca.s)
       this.switchTo("NORMAL")
     } else {
       this.mode = null
@@ -39,6 +40,8 @@ function Vi (client) {
                         'X', 'D',
                         'H', 'J', 'K', 'L', 'Alt+H', 'Alt+J', 'Alt+K', 'Alt+L', '0', 'Shift+$',
                         'W', 'E', 'B', 'G', 'Shift+G',
+                        'Y', 'P',
+                        'U', 'Ctrl+R',
                         '1', '2', '3', '4', '5', '6', '7', '8', '9',
       /* insert mode */ 'Space', 'Delete', 'Enter',
     )
@@ -47,6 +50,8 @@ function Vi (client) {
     // Easily reverted by a client.install()
     client.acels.set('Cursor', 'Toggle Insert Mode', 'CmdOrCtrl+I', () => {})
     client.acels.set('Edit', 'Erase Selection', 'Backspace', () => {})
+    client.acels.set('Edit', 'Undo', 'CmdOrCtrl+Z', () => {})
+    client.acels.set('Edit', 'Redo', 'CmdOrCtrl+Shift+Z', () => {})
   }
 
   this.switchTo = (mode) => {
@@ -88,8 +93,14 @@ function Vi (client) {
     client.acels.set('Vi', 'Delete', 'D', () => {
       if (this.chordPrefix.endsWith('d')) {
         const prefix = this.chordPrefix.slice(0, -1) || 1
-        if (!isNaN(prefix)) { ;[...Array(prefix*1)].forEach((_,i) => client.orca.writeBlock(0, client.cursor.y+i, ".".repeat(client.orca.w))) }
-        else { console.error(`Huh? ${prefix}`) }
+        if (!isNaN(prefix)) {
+          client.cursor.selectNoUpdate(0, client.cursor.y, client.orca.w, prefix-1)
+          client.cursor.copy()
+          client.cursor.erase()
+          client.cursor.reset()
+        } else {
+          console.error(`Huh? ${prefix}`)
+        }
         this.resetChord()
       } else {
         this.chordPrefix += 'd'
@@ -101,10 +112,18 @@ function Vi (client) {
     client.acels.set('Vi', 'Move South', 'J', () => { client.cursor.move(0, -1*(this.chordPrefix||1)); this.resetChord() })
     client.acels.set('Vi', 'Move North', 'K', () => { client.cursor.move(0, 1*(this.chordPrefix||1)); this.resetChord() })
     client.acels.set('Vi', 'Move East', 'L', () => { client.cursor.move(1*(this.chordPrefix||1), 0); this.resetChord() })
+
+    // just some extra stuff
+    client.acels.set('Vi', 'Move West(Leap)', 'Alt+H', () => { client.cursor.move(-client.grid.w, 0) })
+    client.acels.set('Vi', 'Move South(Leap)', 'Alt+J', () => { client.cursor.move(0, -client.grid.h) })
+    client.acels.set('Vi', 'Move North(Leap)', 'Alt+K', () => { client.cursor.move(0, client.grid.h) })
+    client.acels.set('Vi', 'Move East(Leap)', 'Alt+L', () => { client.cursor.move(client.grid.w, 0) })
+
+    // line start and end
     client.acels.set('Vi', 'Start of line', '0', () => { if (!isNaN(this.chordPrefix||'x')) { this.chordPrefix += '0' } else { client.cursor.moveTo(0, client.cursor.y) } })
     client.acels.set('Vi', 'End of line', 'Shift+$', () => { client.cursor.moveTo(client.orca.w, client.cursor.y) })
 
-    // traversals
+    // word traversals
     client.acels.set('Vi', 'Go to word beginning', 'W', () => this.jumpWordBeginning())
     client.acels.set('Vi', 'Go to word ending', 'E', () => this.jumpWordEnding())
     client.acels.set('Vi', 'Go back word', 'B', () => this.jumpWordBack())
@@ -121,13 +140,17 @@ function Vi (client) {
     })
     client.acels.set('Vi', 'Goto End', 'Shift+G', () => client.cursor.moveTo(0, client.orca.h))
 
-    // just some extra stuff
-    client.acels.set('Vi', 'Move West(Leap)', 'Alt+H', () => { client.cursor.move(-client.grid.w, 0) })
-    client.acels.set('Vi', 'Move South(Leap)', 'Alt+J', () => { client.cursor.move(0, -client.grid.h) })
-    client.acels.set('Vi', 'Move North(Leap)', 'Alt+K', () => { client.cursor.move(0, client.grid.h) })
-    client.acels.set('Vi', 'Move East(Leap)', 'Alt+L', () => { client.cursor.move(client.grid.w, 0) })
+    client.acels.set('Vi', 'Paste', 'P', () => {
+      client.history.record(client.orca.s)
+      client.cursor.paste()
+      client.cursor.reset()
+    })
+
+    client.acels.set('Vi', 'Undo', 'U', () => client.history.undo())
+    client.acels.set('Vi', 'Redo', 'CmdOrCtrl+R', () => client.history.redo())
 
     client.acels.set('Vi', 'Normal mode', 'Escape', () => {
+      client.cursor.reset()
       this.resetChord()
     })
 
@@ -147,6 +170,7 @@ function Vi (client) {
 
   this.insertMode = () => {
     client.acels.set('Vi', 'Normal mode', 'Escape', () => {
+      client.history.record(client.orca.s)
       client.cursor.reset()
       client.cursor.move(-1, 0)
       this.switchTo("NORMAL")
@@ -183,7 +207,7 @@ function Vi (client) {
       ) {
         console.log(e.keyCode)
         client.orca.writeBlock(client.cursor.x+1, client.cursor.y, this.lineRightOfCursor())
-        client.cursor.write(e.key)
+        client.cursor.write(e.key, false)
         client.cursor.move(1, 0)
       }
 
