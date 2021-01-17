@@ -341,8 +341,8 @@ function Client (body) {
       this.write(`${display(Object.keys(this.orca.variables).join(''), this.orca.f, this.grid.w - 1)}`, this.grid.w * 4, this.orca.h + 1, this.grid.w - 1)
       this.write(this.orca.f < 250 ? `> ${this.io.midi.toOutputString()}` : '', this.grid.w * 5, this.orca.h + 1, this.grid.w * 4)
 
-      this.write(this.vi.inspectMode(), this.grid.w * 0, this.orca.h + 2, this.grid.w * 2)
-      this.write(this.vi.inspectChord(), this.grid.w * 2, this.orca.h + 2, this.grid.w * 2)
+      this.write(this.vi.inspectMode(), this.grid.w * 0, this.orca.h + 2, this.grid.w * 3)
+      this.write(this.vi.inspectChord(), this.grid.w * 3, this.orca.h + 2, this.grid.w * 2)
     }
   }
 

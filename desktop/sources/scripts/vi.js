@@ -7,8 +7,10 @@
 /**
  * Implements a small subset of Vi.
  *
- * Differences:
- * - o, O, and Enter in insertion mode start new lines, but keep the cursor's X coordinate.
+ *
+ * todo ~
+ *
+ * https://github.com/hundredrabbits/Orca/pull/112
  */
 function Vi (client) {
   this.mode = null
@@ -36,14 +38,16 @@ function Vi (client) {
   this.resetAcels = () => {
     client.acels.unset(
       /* common      */ 'Escape',
-      /* normal mode */ 'I', 'Shift+I', 'Shift+O', 'A', 'Shift+A',
+      /* normal mode */ 'I', 'Shift+I', 'O', 'Shift+O', 'A', 'Shift+A',
                         'X', 'D',
                         'H', 'J', 'K', 'L', 'Alt+H', 'Alt+J', 'Alt+K', 'Alt+L', '0', 'Shift+$',
                         'W', 'E', 'B', 'G', 'Shift+G',
-                        'Y', 'P',
+                        'P', 'R',
                         'U', 'Ctrl+R',
+                        'Ctrl+V', 'Shift+V',
                         '1', '2', '3', '4', '5', '6', '7', '8', '9',
       /* insert mode */ 'Space', 'Delete', 'Enter',
+      /* visual mode */ 'Shift+H', 'Shift+J', 'Shift+K', 'Shift+L', 'Y',
     )
 
     // We overwrite these so they don't work in any mode
@@ -52,16 +56,19 @@ function Vi (client) {
     client.acels.set('Edit', 'Erase Selection', 'Backspace', () => {})
     client.acels.set('Edit', 'Undo', 'CmdOrCtrl+Z', () => {})
     client.acels.set('Edit', 'Redo', 'CmdOrCtrl+Shift+Z', () => {})
+    client.acels.set('Edit', 'Paste', 'CmdOrCtrl+V', () => {})
   }
 
   this.switchTo = (mode) => {
     this.resetAcels()
     this.resetChord()
+    client.cursor.reset()
 
     switch (mode) {
       case "NORMAL": this.normalMode(); break
       case "INSERT": this.insertMode(); break
-      case "VISUAL": this.visualMode(); break
+      case "VISUAL BLOCK": this.visualBlockMode(); break
+      case "VISUAL LINE": this.visualLineMode(); break
       case "COMMAND": this.commandMode(); break
     }
 
@@ -69,13 +76,26 @@ function Vi (client) {
   }
 
   this.normalMode = () => {
-    client.cursor.reset()
 
     // into insert mode
     client.acels.set('Vi', 'Insert',               'I',       () => { this.switchTo("INSERT") })
     client.acels.set('Vi', 'Insert Start Line',    'Shift+I', () => { client.cursor.moveTo(0, client.cursor.y); this.switchTo("INSERT") })
-    client.acels.set('Vi', 'Insert Previous Line', 'Shift+O', () => { client.cursor.moveTo(0, client.cursor.y-1); this.switchTo("INSERT") })
-    client.acels.set('Vi', 'Insert Next Line',     'O',       () => { client.cursor.moveTo(0, client.cursor.y+1); this.switchTo("INSERT") })
+    client.acels.set('Vi', 'Insert Next Line',     'O',       () => {
+      const {x,y} = client.cursor
+      client.cursor.selectNoUpdate(0, client.cursor.y+1, client.orca.w, client.orca.h-client.cursor.y-1)
+      client.cursor.drag(0, -1, false)
+      client.cursor.moveTo(0, y+1)
+      client.history.record(client.orca.s)
+      this.switchTo("INSERT")
+    })
+    client.acels.set('Vi', 'Insert Previous Line', 'Shift+O', () => {
+      const {x,y} = client.cursor
+      client.cursor.selectNoUpdate(0, client.cursor.y, client.orca.w, client.orca.h-client.cursor.y-1)
+      client.cursor.drag(0, -1, false)
+      client.cursor.moveTo(0, y)
+      client.history.record(client.orca.s)
+      this.switchTo("INSERT")
+    })
     client.acels.set('Vi', 'Append',               'A',       () => { client.cursor.move(1, 0); this.switchTo("INSERT") })
     client.acels.set('Vi', 'Append End Line',      'Shift+A', () => {
       // modified Shift+A fit for Orca
@@ -85,6 +105,10 @@ function Vi (client) {
       this.switchTo("INSERT")
     })
 
+    // into visual modes; normal visual mode doesn't make sense because Orca selections can't wrap lines
+    client.acels.set('Vi', 'Visual Block', 'CmdOrCtrl+V',  () => { this.switchTo("VISUAL BLOCK") })
+    client.acels.set('Vi', 'Visual Line',  'Shift+V', () => { this.switchTo("VISUAL LINE") })
+
     // deletions
     client.acels.set('Vi', 'Erase', 'X', () => {
       client.orca.writeBlock(client.cursor.x, client.cursor.y, this.lineRightOfCursor().substring(1))
@@ -92,12 +116,15 @@ function Vi (client) {
     })
     client.acels.set('Vi', 'Delete', 'D', () => {
       if (this.chordPrefix.endsWith('d')) {
-        const prefix = this.chordPrefix.slice(0, -1) || 1
+        const prefix = this.chordPrefix.slice(0, -1)*1 || 1
         if (!isNaN(prefix)) {
-          client.cursor.selectNoUpdate(0, client.cursor.y, client.orca.w, prefix-1)
+          const {x,y} = client.cursor
+          client.cursor.selectNoUpdate(0, y, client.orca.w, prefix-1)
           client.cursor.copy()
-          client.cursor.erase()
-          client.cursor.reset()
+          client.cursor.selectNoUpdate(0, y+prefix, client.orca.w, client.orca.h-y-prefix-1)
+          client.cursor.drag(0, prefix)
+          client.cursor.selectNoUpdate(x, y, 0, 0)
+          client.history.record(client.orca.s)
         } else {
           console.error(`Huh? ${prefix}`)
         }
@@ -162,8 +189,15 @@ function Vi (client) {
       })
     })
 
-    // chords? idk guess they're like their own little mini mode in a way
+    client.acels.set('Vi', 'Replace', 'R', () => { this.chordPrefix = 'r'; this.resetAcels() })
+
     client.commander.onKeyDown = (e) => {
+      if (this.chordPrefix == 'r') {
+        if (e.shiftKey && e.key == 'Shift') return // skip just shift key; wait for combo
+        client.cursor.write(e.key)
+        this.resetChord()
+        this.normalMode()
+      }
       e.stopPropagation()
     }
   }
@@ -214,6 +248,62 @@ function Vi (client) {
       e.stopPropagation()
       // e.preventDefault()
     }
+  }
+
+  this.visualModeCommon = () => {
+    client.acels.set('Vi', 'Scale West', 'H', () => { client.cursor.scale(-1*(this.chordPrefix||1), 0); this.resetChord() })
+    client.acels.set('Vi', 'Scale South', 'J', () => { client.cursor.scale(0, -1*(this.chordPrefix||1)); this.resetChord() })
+    client.acels.set('Vi', 'Scale North', 'K', () => { client.cursor.scale(0, 1*(this.chordPrefix||1)); this.resetChord() })
+    client.acels.set('Vi', 'Scale East', 'L', () => { client.cursor.scale(1*(this.chordPrefix||1), 0); this.resetChord() })
+    client.acels.set('Vi', 'Start of line', '0', () => { if (!isNaN(this.chordPrefix||'x')) { this.chordPrefix += '0' } else { client.cursor.scaleTo(-client.cursor.x, 0) } })
+    client.acels.set('Vi', 'End of line', 'Shift+$', () => { client.cursor.scaleTo(client.orca.w-client.cursor.x, 0) })
+
+    client.acels.set('Vi', 'Drag West', 'Shift+H', () => { client.cursor.drag(-1*(this.chordPrefix||1), 0); this.resetChord(); client.history.record(client.orca.s) })
+    client.acels.set('Vi', 'Drag South', 'Shift+J', () => { client.cursor.drag(0, -1*(this.chordPrefix||1)); this.resetChord(); client.history.record(client.orca.s) })
+    client.acels.set('Vi', 'Drag North', 'Shift+K', () => { client.cursor.drag(0, 1*(this.chordPrefix||1)); this.resetChord(); client.history.record(client.orca.s) })
+    client.acels.set('Vi', 'Drag East', 'Shift+L', () => { client.cursor.drag(1*(this.chordPrefix||1), 0); this.resetChord(); client.history.record(client.orca.s) })
+
+    client.acels.set('Vi', 'Copy', 'Y', () => { client.cursor.copy(); this.switchTo("NORMAL") })
+    client.acels.set('Vi', 'Cut', 'X', () => { client.cursor.cut(); this.switchTo("NORMAL") })
+
+    ;[1,2,3,4,5,6,7,8,9].forEach(n => {
+      client.acels.set('Vi', `${n}`, n, () => {
+        if (!isNaN(this.chordPrefix)) { // isNaN('') is false because JavaScript <3
+          this.chordPrefix += `${n}`
+        }
+      })
+    })
+
+    client.acels.set('Vi', 'Replace', 'R', () => { this.chordPrefix = 'r'; this.resetAcels() })
+
+    client.commander.onKeyDown = (e) => {
+      if (this.chordPrefix == 'r') {
+        if (e.shiftKey && e.key == 'Shift') return // skip just shift key; wait for combo
+        client.cursor.write(e.key)
+        const block = client.cursor.toRect()
+        client.orca.writeBlock(block.x, block.y, `${e.key.repeat(block.w)}\n`.repeat(block.h))
+        client.history.record(client.orca.s)
+        this.resetChord()
+        this.switchTo("NORMAL")
+      }
+      e.stopPropagation()
+    }
+  }
+
+  this.visualBlockMode = () => {
+    const {x,y} = client.cursor
+    client.cursor.selectNoUpdate(x, y, 0, 0)
+    client.acels.set('Vi', 'Normal mode', 'Escape', () => { this.switchTo("NORMAL") })
+    client.acels.set('Vi', 'Visual Line',  'Shift+V', () => { this.switchTo("VISUAL LINE") })
+    this.visualModeCommon()
+  }
+
+  this.visualLineMode = () => {
+    const {x,y} = client.cursor
+    client.cursor.selectNoUpdate(0, y, client.orca.w, 0)
+    client.acels.set('Vi', 'Normal mode', 'Escape', () => { client.cursor.x = x; this.switchTo("NORMAL") })
+    client.acels.set('Vi', 'Visual Block', 'CmdOrCtrl+V',  () => { this.switchTo("VISUAL BLOCK") })
+    this.visualModeCommon()
   }
 
   // Returns the text to the right of our cursor until the end of the line

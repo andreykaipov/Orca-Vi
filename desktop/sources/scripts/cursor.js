@@ -76,14 +76,14 @@ function Cursor (client) {
     this.select(this.x, this.y, w, h)
   }
 
-  this.drag = (x, y) => {
+  this.drag = (x, y, record=false) => {
     if (isNaN(x) || isNaN(y)) { return }
     this.ins = false
     const block = this.selection()
-    this.erase()
+    this.erase(record)
     this.move(x, y)
     client.orca.writeBlock(this.minX, this.minY, block)
-    client.history.record(client.orca.s)
+    if (record) client.history.record(client.orca.s)
   }
 
   this.reset = (pos = false) => {
@@ -103,13 +103,13 @@ function Cursor (client) {
     if (record) client.history.record(client.orca.s)
   }
 
-  this.erase = () => {
+  this.erase = (record) => {
     for (let y = this.minY; y <= this.maxY; y++) {
       for (let x = this.minX; x <= this.maxX; x++) {
         client.orca.write(x, y, '.')
       }
     }
-    client.history.record(client.orca.s)
+    if (record) client.history.record(client.orca.s)
   }
 
   this.find = (str) => {
