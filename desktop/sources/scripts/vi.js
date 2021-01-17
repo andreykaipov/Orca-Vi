@@ -97,8 +97,9 @@ function Vi (client) {
     client.acels.set('Vi', 'End of line', 'Shift+$', () => { client.cursor.moveTo(client.orca.w, client.cursor.y) })
 
     // traversals
-    client.acels.set('Vi', 'Jump to word beginning', 'W', () => this.jumpWordBeginning())
-    client.acels.set('Vi', 'Jump to word ending', 'E', () => this.jumpWordEnding())
+    client.acels.set('Vi', 'Go to word beginning', 'W', () => this.jumpWordBeginning())
+    client.acels.set('Vi', 'Go to word ending', 'E', () => this.jumpWordEnding())
+    client.acels.set('Vi', 'Go back word', 'B', () => this.jumpWordBack())
     client.acels.set('Vi', 'Goto', 'G', () => {
       if (this.chordPrefix.endsWith('g')) {
         const prefix = this.chordPrefix.slice(0, -1)
@@ -194,6 +195,17 @@ function Vi (client) {
     )
   }
 
+  // Returns the text to the left of our cursor until the start of the line
+  // This includes the character under our cursor!
+  this.lineLeftOfCursor = () => {
+    return client.orca.getBlock(
+      0,
+      client.cursor.y,
+      client.cursor.x+1,
+      1,
+    )
+  }
+
   this.jumpWordBeginning = () => {
     while (true) {
       const line = this.lineRightOfCursor().split('')
@@ -208,7 +220,7 @@ function Vi (client) {
         moves = movesUntilDot + line.slice(movesUntilDot).findIndex(x => x != '.')
       }
 
-      // Test for two edge cases:
+      // Test for two (literal) edge cases:
       // 1. Our cursor is over a word that extends until the end of the line. There are no more dots on this line, e.g. ...abc|
       // 2. Our cursor is over the last word in this line. There are no more words to the right of this word on this line, e.g. ..abc..|
       // In either case, our goal is to repeat the above search on the next line.
@@ -253,7 +265,7 @@ function Vi (client) {
     const toDelete = this.chordPrefix.endsWith('d') // check this now in as jumpWordBeginning might do some for us
 
     // Find the next word if we're on a dot, or we're already at the end of our current word
-    if (line[0] == '.' || line[1] == '.' || line[1] == '\n') {
+    if (line[0] === '.' || line[1] === '.' || line[1] === '\n') {
       this.jumpWordBeginning()
       line = this.lineRightOfCursor()
     }
@@ -271,6 +283,42 @@ function Vi (client) {
       this.resetChord()
     } else {
       client.cursor.move(moves-1, 0) // moves to the last character of the word
+    }
+  }
+
+  this.jumpWordBack = () => {
+    while (true) {
+      let line = [...this.lineLeftOfCursor().split('').reverse().slice(1), '.']
+      let charUnderCursor = line[0]
+      let moves = 0
+
+      // If we're at the start of a word  against the border, i.e. |abc.. with cursor over 'a'
+      if (line.length == 2) {
+        client.cursor.moveTo(client.orca.w, client.cursor.y-1)
+        continue
+      }
+
+      if (charUnderCursor === '.') {
+        const movesUntilWordEnd = line.findIndex(x => x != '.')
+        moves = movesUntilWordEnd + line.slice(movesUntilWordEnd).indexOf('.')
+      } else {
+        moves = line.indexOf('.')
+        // if we're at the start of a word already, we should go to the next one, so recurse
+        if (moves == 1) {
+          client.cursor.move(-1, 0)
+          continue
+        }
+      }
+
+      // If we're at the start of the word and there's nothing else on the line, i.e ...abc..| with cursor over 'a'
+      if (moves === -1) {
+        if (client.cursor.y <= 0) { client.cursor.moveTo(0, 0); break }
+        client.cursor.moveTo(client.orca.w, client.cursor.y-1)
+        continue
+      }
+
+      client.cursor.move(-moves+1, 0)
+      break
     }
   }
 }
