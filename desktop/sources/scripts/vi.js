@@ -35,7 +35,7 @@ function Vi (client) {
   this.resetAcels = () => {
     client.acels.unset(
       /* common      */ 'Escape',
-      /* normal mode */ 'I', 'O', 'Shift+O', 'A',
+      /* normal mode */ 'I', 'Shift+I', 'Shift+O', 'A', 'Shift+A',
                         'X', 'D',
                         'H', 'J', 'K', 'L', 'Alt+H', 'Alt+J', 'Alt+K', 'Alt+L', '0', 'Shift+$',
                         'W', 'E', 'B', 'G', 'Shift+G',
@@ -67,10 +67,18 @@ function Vi (client) {
     client.cursor.reset()
 
     // into insert mode
-    client.acels.set('Vi', 'Insert', 'I', () => { this.switchTo("INSERT") })
-    client.acels.set('Vi', 'Insert Previous Line', 'Shift+O', () => { client.cursor.move(0, 1); this.switchTo("INSERT") })
-    client.acels.set('Vi', 'Insert Next Line', 'O', () => { client.cursor.move(0, -1); this.switchTo("INSERT") })
-    client.acels.set('Vi', 'Append', 'A', () => { client.cursor.move(1, 0); this.switchTo("INSERT") })
+    client.acels.set('Vi', 'Insert',               'I',       () => { this.switchTo("INSERT") })
+    client.acels.set('Vi', 'Insert Start Line',    'Shift+I', () => { client.cursor.moveTo(0, client.cursor.y); this.switchTo("INSERT") })
+    client.acels.set('Vi', 'Insert Previous Line', 'Shift+O', () => { client.cursor.moveTo(0, client.cursor.y-1); this.switchTo("INSERT") })
+    client.acels.set('Vi', 'Insert Next Line',     'O',       () => { client.cursor.moveTo(0, client.cursor.y+1); this.switchTo("INSERT") })
+    client.acels.set('Vi', 'Append',               'A',       () => { client.cursor.move(1, 0); this.switchTo("INSERT") })
+    client.acels.set('Vi', 'Append End Line',      'Shift+A', () => {
+      // modified Shift+A fit for Orca
+      const lastWordIndex = client.orca.w-this.lineRightOfCursor().split('').reverse().slice(1).findIndex(x => x !== '.')
+      console.log(this.lineRightOfCursor().split('').reverse().findIndex(x => x !== '.'))
+      client.cursor.moveTo(lastWordIndex, client.cursor.y)
+      this.switchTo("INSERT")
+    })
 
     // deletions
     client.acels.set('Vi', 'Erase', 'X', () => {
