@@ -38,7 +38,7 @@ function Vi (client) {
       /* normal mode */ 'I', 'O', 'Shift+O', 'A',
                         'X', 'D',
                         'H', 'J', 'K', 'L', 'Alt+H', 'Alt+J', 'Alt+K', 'Alt+L', '0', 'Shift+$',
-                        'W', 'E',
+                        'W', 'E', 'B', 'G', 'Shift+G',
                         '1', '2', '3', '4', '5', '6', '7', '8', '9',
       /* insert mode */ 'Space', 'Delete', 'Enter',
     )
@@ -77,15 +77,12 @@ function Vi (client) {
       client.orca.writeBlock(client.cursor.x, client.cursor.y, this.lineRightOfCursor().substring(1))
       client.history.record(client.orca.s)
     })
-    client.acels.set('Vi', 'Delete chord', 'D', () => {
+    client.acels.set('Vi', 'Delete', 'D', () => {
       if (this.chordPrefix.endsWith('d')) {
-        const sliced = this.chordPrefix.slice(0, -1) || 1
-        if (!isNaN(sliced)) {
-          ;[...Array(sliced*1)].forEach((_,i) => client.orca.writeBlock(0, client.cursor.y+i, ".".repeat(client.orca.w)))
-          this.resetChord()
-        } else {
-          console.error(`What else is it then? ${sliced}`)
-        }
+        const prefix = this.chordPrefix.slice(0, -1) || 1
+        if (!isNaN(prefix)) { ;[...Array(prefix*1)].forEach((_,i) => client.orca.writeBlock(0, client.cursor.y+i, ".".repeat(client.orca.w))) }
+        else { console.error(`Huh? ${prefix}`) }
+        this.resetChord()
       } else {
         this.chordPrefix += 'd'
       }
@@ -96,12 +93,24 @@ function Vi (client) {
     client.acels.set('Vi', 'Move South', 'J', () => { client.cursor.move(0, -1*(this.chordPrefix||1)); this.resetChord() })
     client.acels.set('Vi', 'Move North', 'K', () => { client.cursor.move(0, 1*(this.chordPrefix||1)); this.resetChord() })
     client.acels.set('Vi', 'Move East', 'L', () => { client.cursor.move(1*(this.chordPrefix||1), 0); this.resetChord() })
-    client.acels.set('Vi', 'Start of line', '0', () => { this.chordPrefix ? this.chordPrefix = this.chordPrefix+'0' : client.cursor.moveTo(0, client.cursor.y) })
+    client.acels.set('Vi', 'Start of line', '0', () => { if (!isNaN(this.chordPrefix||'x')) { this.chordPrefix += '0' } else { client.cursor.moveTo(0, client.cursor.y) } })
     client.acels.set('Vi', 'End of line', 'Shift+$', () => { client.cursor.moveTo(client.orca.w, client.cursor.y) })
 
     // traversals
     client.acels.set('Vi', 'Jump to word beginning', 'W', () => this.jumpWordBeginning())
     client.acels.set('Vi', 'Jump to word ending', 'E', () => this.jumpWordEnding())
+    client.acels.set('Vi', 'Goto', 'G', () => {
+      if (this.chordPrefix.endsWith('g')) {
+        const prefix = this.chordPrefix.slice(0, -1)
+        if (prefix === '') { client.cursor.moveTo(0, 0) }
+        else if (!isNaN(prefix)) { client.cursor.moveTo(0, prefix) }
+        else { console.error(`Huh? ${prefix}`) }
+        this.resetChord()
+      } else {
+        this.chordPrefix += 'g'
+      }
+    })
+    client.acels.set('Vi', 'Goto End', 'Shift+G', () => client.cursor.moveTo(0, client.orca.h))
 
     // just some extra stuff
     client.acels.set('Vi', 'Move West(Leap)', 'Alt+H', () => { client.cursor.move(-client.grid.w, 0) })
@@ -204,6 +213,13 @@ function Vi (client) {
       // 2. Our cursor is over the last word in this line. There are no more words to the right of this word on this line, e.g. ..abc..|
       // In either case, our goal is to repeat the above search on the next line.
       if (moves === -1 || moves === line.length-1) {
+        if (this.chordPrefix.endsWith('d')) {
+          client.orca.writeBlock(client.cursor.x, client.cursor.y, ".".repeat(client.orca.w))
+          client.history.record(client.orca.s)
+          this.resetChord()
+          break
+        }
+
         // don't recurse past Orca's height
         if (client.cursor.y+1 >= client.orca.h) break
 
@@ -215,8 +231,16 @@ function Vi (client) {
         continue
       }
 
-      // Otherwise, simply just move the amount of spaces we calculated
-      client.cursor.move(moves, 0)
+      if (this.chordPrefix.endsWith('d')) {
+        const line = this.lineRightOfCursor().substring(moves)
+        client.orca.writeBlock(client.cursor.x, client.cursor.y, ".".repeat(client.orca.w))
+        client.orca.writeBlock(client.cursor.x, client.cursor.y, line)
+        client.history.record(client.orca.s)
+        this.resetChord()
+      } else {
+        // Otherwise, simply just move the amount of spaces we calculated
+        client.cursor.move(moves, 0)
+      }
       break
     }
   }
@@ -226,7 +250,8 @@ function Vi (client) {
   this.jumpWordEnding = () => {
     let line = this.lineRightOfCursor()
 
-    console.log(line)
+    const toDelete = this.chordPrefix.endsWith('d') // check this now in as jumpWordBeginning might do some for us
+
     // Find the next word if we're on a dot, or we're already at the end of our current word
     if (line[0] == '.' || line[1] == '.' || line[1] == '\n') {
       this.jumpWordBeginning()
@@ -239,6 +264,13 @@ function Vi (client) {
       moves = line.length-1
     }
 
-    client.cursor.move(moves-1, 0) // moves to the last character of the word
+    if (toDelete) {
+      const line = this.lineRightOfCursor().substring(moves)
+      client.orca.writeBlock(client.cursor.x, client.cursor.y, ".".repeat(client.orca.w))
+      client.orca.writeBlock(client.cursor.x, client.cursor.y, line)
+      this.resetChord()
+    } else {
+      client.cursor.move(moves-1, 0) // moves to the last character of the word
+    }
   }
 }
