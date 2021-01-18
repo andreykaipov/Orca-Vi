@@ -57,6 +57,7 @@ function Vi (client) {
     client.acels.set('Edit', 'Undo', 'CmdOrCtrl+Z', () => {})
     client.acels.set('Edit', 'Redo', 'CmdOrCtrl+Shift+Z', () => {})
     client.acels.set('Edit', 'Paste', 'CmdOrCtrl+V', () => {})
+    client.acels.set('Orca', 'Fullscreen', 'CmdOrCtrl+Enter', () => {})
   }
 
   this.switchTo = (mode) => {
@@ -262,6 +263,13 @@ function Vi (client) {
       client.cursor.drag(0, -1, false)
       client.cursor.moveTo(x, y+1)
       client.cursor.reset()
+    })
+
+    client.acels.set('Vi', 'Next line no linebreak', 'Shift+Enter', () => {
+      const line = this.lineLeftOfCursor().split('').reverse().slice(1)
+      if (line[0] === '.' || line[1] !== '.') this.jumpWordBack()
+      const {x,y} = client.cursor
+      client.cursor.moveTo(x, y+1)
     })
 
     // Handled similarly as any key in the commandar below, but has to be an acel to override the existing
