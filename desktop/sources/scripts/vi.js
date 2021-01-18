@@ -58,6 +58,7 @@ function Vi (client) {
     client.acels.set('Edit', 'Redo', 'CmdOrCtrl+Shift+Z', () => {})
     client.acels.set('Edit', 'Paste', 'CmdOrCtrl+V', () => {})
     client.acels.set('Orca', 'Fullscreen', 'CmdOrCtrl+Enter', () => {})
+    client.acels.set('Clock', 'Play/Pause', 'Space', () => {})
   }
 
   this.switchTo = (mode) => {
@@ -200,9 +201,31 @@ function Vi (client) {
     client.acels.set('Vi', 'Goto End', 'Shift+G', () => client.cursor.moveTo(0, client.orca.h))
 
     client.acels.set('Vi', 'Paste', 'P', () => {
-      client.history.record(client.orca.s)
-      client.cursor.paste()
-      client.cursor.reset()
+      const prefix = this.chordPrefix*1 || 1
+      if (!isNaN(prefix)) {
+        const {x,y} = client.cursor
+
+        let height = -1
+        const calcClipboardHeight = (e) => {
+          const clipboard = e.clipboardData.getData('Text')
+          height = clipboard.split('\n').length-1
+        }
+
+        document.addEventListener('paste', calcClipboardHeight)
+        client.history.record(client.orca.s)
+        for (let i = 0; i < prefix; i+=1) {
+          client.cursor.paste()
+          client.cursor.move(0, -height)
+        }
+        document.removeEventListener('paste', calcClipboardHeight)
+
+        client.cursor.moveTo(x, y)
+        client.cursor.reset()
+      } else {
+          console.error(`Huh? ${prefix}`)
+      }
+      this.resetChord()
+
     })
 
     client.acels.set('Vi', 'Undo', 'U', () => client.history.undo())
@@ -221,7 +244,13 @@ function Vi (client) {
       })
     })
 
-    client.acels.set('Vi', 'Replace', 'R', () => { this.chordPrefix = 'r'; this.resetAcels() })
+    client.acels.set('Vi', 'Play/Pause', 'Space', () => client.clock.togglePlay(false))
+
+    client.acels.set('Vi', 'Replace', 'R', () => {
+      this.chordPrefix = 'r'
+      this.resetAcels()
+      client.acels.set('Vi', '', 'Space', () => { client.cursor.write('.'); this.resetChord(); this.normalMode() })
+    })
 
     client.commander.onKeyDown = (e) => {
       if (this.chordPrefix == 'r') {
@@ -272,7 +301,7 @@ function Vi (client) {
       client.cursor.moveTo(x, y+1)
     })
 
-    // Handled similarly as any key in the commandar below, but has to be an acel to override the existing
+    // Handled similarly as any key in the commandar below, but has to be an acel to override the existing 'Space'
     client.acels.set('Vi', 'Space', 'Space', () => {
       client.orca.writeBlock(client.cursor.x+1, client.cursor.y, this.lineRightOfCursor())
       client.orca.write(client.cursor.x, client.cursor.y, '.')
