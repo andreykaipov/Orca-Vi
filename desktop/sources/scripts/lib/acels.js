@@ -41,6 +41,9 @@ function Acels (client) {
     if ((event.ctrlKey || event.metaKey) && event.shiftKey) {
       return `CmdOrCtrl+Shift+${accelerator}`
     }
+    if (event.shiftKey && event.altKey) {
+      return `Shift+Alt+${accelerator}`
+    }
     if (event.shiftKey /*&& event.key.toUpperCase() !== event.key*/) {
       return `Shift+${accelerator}`
     }

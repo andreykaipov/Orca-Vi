@@ -81,18 +81,22 @@ function Vi (client) {
     client.acels.set('Vi', 'Insert',               'I',       () => { this.switchTo("INSERT") })
     client.acels.set('Vi', 'Insert Start Line',    'Shift+I', () => { client.cursor.moveTo(0, client.cursor.y); this.switchTo("INSERT") })
     client.acels.set('Vi', 'Insert Next Line',     'O',       () => {
+      const line = this.lineLeftOfCursor().split('').reverse().slice(1)
+      if (line[0] === '.' || line[1] !== '.') this.jumpWordBack()
       const {x,y} = client.cursor
       client.cursor.selectNoUpdate(0, client.cursor.y+1, client.orca.w, client.orca.h-client.cursor.y-1)
       client.cursor.drag(0, -1, false)
-      client.cursor.moveTo(0, y+1)
+      client.cursor.moveTo(x, y+1)
       client.history.record(client.orca.s)
       this.switchTo("INSERT")
     })
     client.acels.set('Vi', 'Insert Previous Line', 'Shift+O', () => {
+      const line = this.lineLeftOfCursor().split('').reverse().slice(1)
+      if (line[0] === '.' || line[1] !== '.') this.jumpWordBack()
       const {x,y} = client.cursor
       client.cursor.selectNoUpdate(0, client.cursor.y, client.orca.w, client.orca.h-client.cursor.y-1)
       client.cursor.drag(0, -1, false)
-      client.cursor.moveTo(0, y)
+      client.cursor.moveTo(x, y)
       client.history.record(client.orca.s)
       this.switchTo("INSERT")
     })
@@ -147,8 +151,35 @@ function Vi (client) {
     client.acels.set('Vi', 'Move East(Leap)', 'Alt+L', () => { client.cursor.move(client.grid.w, 0) })
 
     // line start and end
-    client.acels.set('Vi', 'Start of line', '0', () => { if (!isNaN(this.chordPrefix||'x')) { this.chordPrefix += '0' } else { client.cursor.moveTo(0, client.cursor.y) } })
-    client.acels.set('Vi', 'End of line', 'Shift+$', () => { client.cursor.moveTo(client.orca.w, client.cursor.y) })
+    client.acels.set('Vi', 'Start of line', '0', () => {
+      if (this.chordPrefix.endsWith('d')) {
+        const {x,y} = client.cursor
+        client.cursor.selectNoUpdate(x-1, y, -client.cursor.x, 0)
+        client.cursor.cut()
+        client.orca.writeBlock(-1, client.cursor.y, this.lineRightOfCursor())
+        client.history.record(client.orca.s)
+        client.cursor.moveTo(0, client.cursor.y)
+        client.cursor.reset()
+        this.resetChord()
+      } else if (!isNaN(this.chordPrefix||'x')) {
+        this.chordPrefix += '0'
+      } else {
+        client.cursor.moveTo(0, client.cursor.y)
+      }
+    })
+    client.acels.set('Vi', 'End of line', 'Shift+$', () => {
+      if (this.chordPrefix.endsWith('d')) {
+        const {x,y} = client.cursor
+        client.cursor.selectNoUpdate(x, y, client.orca.w, 0)
+        client.cursor.cut()
+        client.history.record(client.orca.s)
+        client.cursor.move(-1, 0)
+        client.cursor.reset()
+        this.resetChord()
+      } else {
+        client.cursor.moveTo(client.orca.w, client.cursor.y)
+      }
+    })
 
     // word traversals
     client.acels.set('Vi', 'Go to word beginning', 'W', () => this.jumpWordBeginning())
@@ -222,7 +253,16 @@ function Vi (client) {
       client.history.record(client.orca.s)
     })
 
-    client.acels.set('Vi', 'Next line', 'Enter', () => { client.cursor.moveTo(0, client.cursor.y+1) })
+    // Same logic as o in normal mode
+    client.acels.set('Vi', 'Next line', 'Enter', () => {
+      const line = this.lineLeftOfCursor().split('').reverse().slice(1)
+      if (line[0] === '.' || line[1] !== '.') this.jumpWordBack()
+      const {x,y} = client.cursor
+      client.cursor.selectNoUpdate(0, client.cursor.y+1, client.orca.w, client.orca.h-client.cursor.y-1)
+      client.cursor.drag(0, -1, false)
+      client.cursor.moveTo(x, y+1)
+      client.cursor.reset()
+    })
 
     // Handled similarly as any key in the commandar below, but has to be an acel to override the existing
     client.acels.set('Vi', 'Space', 'Space', () => {
@@ -255,13 +295,21 @@ function Vi (client) {
     client.acels.set('Vi', 'Scale South', 'J', () => { client.cursor.scale(0, -1*(this.chordPrefix||1)); this.resetChord() })
     client.acels.set('Vi', 'Scale North', 'K', () => { client.cursor.scale(0, 1*(this.chordPrefix||1)); this.resetChord() })
     client.acels.set('Vi', 'Scale East', 'L', () => { client.cursor.scale(1*(this.chordPrefix||1), 0); this.resetChord() })
-    client.acels.set('Vi', 'Start of line', '0', () => { if (!isNaN(this.chordPrefix||'x')) { this.chordPrefix += '0' } else { client.cursor.scaleTo(-client.cursor.x, 0) } })
-    client.acels.set('Vi', 'End of line', 'Shift+$', () => { client.cursor.scaleTo(client.orca.w-client.cursor.x, 0) })
+    client.acels.set('Vi', 'Start of line', '0', () => { if (!isNaN(this.chordPrefix||'x')) { this.chordPrefix += '0' } else { client.cursor.scaleTo(-client.cursor.x, client.cursor.h) } })
+    client.acels.set('Vi', 'End of line', 'Shift+$', () => { client.cursor.scaleTo(client.orca.w-client.cursor.x-1, client.cursor.h) })
+    client.acels.set('Vi', 'Move West(Leap)', 'Alt+H', () => { client.cursor.scale(-client.grid.w, 0) })
+    client.acels.set('Vi', 'Move South(Leap)', 'Alt+J', () => { client.cursor.scale(0, -client.grid.h) })
+    client.acels.set('Vi', 'Move North(Leap)', 'Alt+K', () => { client.cursor.scale(0, client.grid.h) })
+    client.acels.set('Vi', 'Move East(Leap)', 'Alt+L', () => { client.cursor.scale(client.grid.w, 0) })
 
     client.acels.set('Vi', 'Drag West', 'Shift+H', () => { client.cursor.drag(-1*(this.chordPrefix||1), 0); this.resetChord(); client.history.record(client.orca.s) })
     client.acels.set('Vi', 'Drag South', 'Shift+J', () => { client.cursor.drag(0, -1*(this.chordPrefix||1)); this.resetChord(); client.history.record(client.orca.s) })
     client.acels.set('Vi', 'Drag North', 'Shift+K', () => { client.cursor.drag(0, 1*(this.chordPrefix||1)); this.resetChord(); client.history.record(client.orca.s) })
     client.acels.set('Vi', 'Drag East', 'Shift+L', () => { client.cursor.drag(1*(this.chordPrefix||1), 0); this.resetChord(); client.history.record(client.orca.s) })
+    client.acels.set('Vi', 'Drag West(Leap)', 'Shift+Alt+H', () => { client.cursor.drag(-client.grid.w, 0); client.history.record(client.orca.s) })
+    client.acels.set('Vi', 'Drag South(Leap)', 'Shift+Alt+J', () => { client.cursor.drag(0, -client.grid.h); client.history.record(client.orca.s) })
+    client.acels.set('Vi', 'Drag North(Leap)', 'Shift+Alt+K', () => { client.cursor.drag(0, client.grid.h); client.history.record(client.orca.s) })
+    client.acels.set('Vi', 'Drag East(Leap)', 'Shift+Alt+L', () => { client.cursor.drag(client.grid.w, 0); client.history.record(client.orca.s) })
 
     client.acels.set('Vi', 'Copy', 'Y', () => { client.cursor.copy(); this.switchTo("NORMAL") })
     client.acels.set('Vi', 'Cut', 'X', () => { client.cursor.cut(); this.switchTo("NORMAL") })
