@@ -38,7 +38,7 @@ function Vi (client) {
   this.resetAcels = () => {
     client.acels.unset(
       /* common      */ 'Escape',
-      /* normal mode */ 'I', 'Shift+I', 'O', 'Shift+O', 'A', 'Shift+A',
+      /* normal mode */ 'I', 'Shift+I', 'O', 'Shift+O', 'A', 'Shift+A', 'Shift+R',
                         'X', 'D',
                         'H', 'J', 'K', 'L', 'Alt+H', 'Alt+J', 'Alt+K', 'Alt+L', '0', 'Shift+$',
                         'W', 'E', 'B', 'G', 'Shift+G',
@@ -69,15 +69,16 @@ function Vi (client) {
     switch (mode) {
       case "NORMAL": this.normalMode(); break
       case "INSERT": this.insertMode(); break
+      case "REPLACE": this.replaceMode(); break
       case "VISUAL BLOCK": this.visualBlockMode(); break
       case "VISUAL LINE": this.visualLineMode(); break
-      case "COMMAND": this.commandMode(); break
     }
 
     this.mode = mode
   }
 
   this.normalMode = () => {
+    client.acels.set('Vi', 'Normal mode', 'Escape', () => { client.cursor.reset(); this.resetChord() })
 
     // into insert mode
     client.acels.set('Vi', 'Insert',               'I',       () => { this.switchTo("INSERT") })
@@ -110,6 +111,9 @@ function Vi (client) {
       client.cursor.moveTo(lastWordIndex, client.cursor.y)
       this.switchTo("INSERT")
     })
+
+    // into replace mode
+    client.acels.set('Vi', 'Replace',              'Shift+R', () => { this.switchTo("REPLACE") })
 
     // into visual modes; normal visual mode doesn't make sense because Orca selections can't wrap lines
     client.acels.set('Vi', 'Visual Block', 'CmdOrCtrl+V',  () => { this.switchTo("VISUAL BLOCK") })
@@ -225,27 +229,12 @@ function Vi (client) {
           console.error(`Huh? ${prefix}`)
       }
       this.resetChord()
-
     })
 
     client.acels.set('Vi', 'Undo', 'U', () => client.history.undo())
     client.acels.set('Vi', 'Redo', 'CmdOrCtrl+R', () => client.history.redo())
 
-    client.acels.set('Vi', 'Normal mode', 'Escape', () => {
-      client.cursor.reset()
-      this.resetChord()
-    })
-
-    ;[1,2,3,4,5,6,7,8,9].forEach(n => {
-      client.acels.set('Vi', `${n}`, n, () => {
-        if (!isNaN(this.chordPrefix)) { // isNaN('') is false because JavaScript <3
-          this.chordPrefix += `${n}`
-        }
-      })
-    })
-
-    client.acels.set('Vi', 'Play/Pause', 'Space', () => client.clock.togglePlay(false))
-
+    // Replace is further handled in the overwritten commander since we need to detect which key was pressed
     client.acels.set('Vi', 'Replace', 'R', () => {
       this.chordPrefix = 'r'
       this.resetAcels()
@@ -261,6 +250,17 @@ function Vi (client) {
       }
       e.stopPropagation()
     }
+
+    // misc
+    ;[1,2,3,4,5,6,7,8,9].forEach(n => {
+      client.acels.set('Vi', `${n}`, n, () => {
+        if (!isNaN(this.chordPrefix)) { // isNaN('') is false because JavaScript <3
+          this.chordPrefix += `${n}`
+        }
+      })
+    })
+
+    client.acels.set('Vi', 'Play/Pause', 'Space', () => client.clock.togglePlay(false))
   }
 
   this.insertMode = () => {
@@ -294,11 +294,13 @@ function Vi (client) {
       client.cursor.reset()
     })
 
+    // Hmm...
     client.acels.set('Vi', 'Next line no linebreak', 'Shift+Enter', () => {
       const line = this.lineLeftOfCursor().split('').reverse().slice(1)
       if (line[0] === '.' || line[1] !== '.') this.jumpWordBack()
       const {x,y} = client.cursor
       client.cursor.moveTo(x, y+1)
+      this.switchTo("REPLACE")
     })
 
     // Handled similarly as any key in the commandar below, but has to be an acel to override the existing 'Space'
@@ -324,6 +326,40 @@ function Vi (client) {
 
       e.stopPropagation()
       // e.preventDefault()
+    }
+  }
+
+  this.replaceMode = () => {
+    this.insertMode()
+
+    client.acels.set('Vi', 'Erase', 'Backspace', () => client.cursor.move(-1, 0))
+
+    // This is Insert's Shift+Enter
+    client.acels.set('Vi', 'Next line no linebreak', 'Enter', () => {
+      const line = this.lineLeftOfCursor().split('').reverse().slice(1)
+      if (line[0] === '.' || line[1] !== '.') this.jumpWordBack()
+      const {x,y} = client.cursor
+      client.cursor.moveTo(x, y+1)
+    })
+
+    client.acels.set('Vi', 'Space', 'Space', () => {
+      client.orca.write(client.cursor.x, client.cursor.y, '.')
+      client.cursor.move(1, 0)
+    })
+
+    client.commander.onKeyDown = (e) => {
+      if (e.ctrlKey || e.metaKey) { return }
+
+      if (
+        !e.altKey &&
+        e.key !== 'CapsLock' &&
+        !(e.shiftKey && e.key == "Shift")
+      ) {
+        client.cursor.write(e.key, false)
+        client.cursor.move(1, 0)
+      }
+
+      e.stopPropagation()
     }
   }
 
