@@ -48,6 +48,8 @@ function Vi (client) {
                         '1', '2', '3', '4', '5', '6', '7', '8', '9',
       /* insert mode */ 'Space', 'Delete', 'Enter',
       /* visual mode */ 'Shift+H', 'Shift+J', 'Shift+K', 'Shift+L', 'Y',
+                        'Alt+H', 'Alt+J', 'Alt+K', 'Alt+L',
+                        'Shift+Alt+H', 'Shift+Alt+J', 'Shift+Alt+K', 'Shift+Alt+L',
     )
 
     // We overwrite these so they don't work in any mode
@@ -59,6 +61,8 @@ function Vi (client) {
     client.acels.set('Edit', 'Paste', 'CmdOrCtrl+V', () => {})
     client.acels.set('Orca', 'Fullscreen', 'CmdOrCtrl+Enter', () => {})
     client.acels.set('Clock', 'Play/Pause', 'Space', () => {})
+    client.acels.set('Project', 'Toggle Commander', 'CmdOrCtrl+K', () => {})
+    client.acels.set('Project', 'Find', 'CmdOrCtrl+J', () => {})
   }
 
   this.switchTo = (mode) => {
@@ -83,6 +87,12 @@ function Vi (client) {
     // into insert mode
     client.acels.set('Vi', 'Insert',               'I',       () => { this.switchTo("INSERT") })
     client.acels.set('Vi', 'Insert Start Line',    'Shift+I', () => { client.cursor.moveTo(0, client.cursor.y); this.switchTo("INSERT") })
+    client.acels.set('Vi', 'Append',               'A',       () => { client.cursor.move(1, 0); this.switchTo("INSERT") })
+    client.acels.set('Vi', 'Append End Line',      'Shift+A', () => {
+      const lastWordIndex = client.orca.w-this.lineRightOfCursor().split('').reverse().slice(1).findIndex(x => x !== '.')
+      client.cursor.moveTo(lastWordIndex, client.cursor.y)
+      this.switchTo("INSERT")
+    })
     client.acels.set('Vi', 'Insert Next Line',     'O',       () => {
       const line = this.lineLeftOfCursor().split('').reverse().slice(1)
       if (line[0] === '.' || line[1] !== '.') this.jumpWordBack()
@@ -101,14 +111,6 @@ function Vi (client) {
       client.cursor.drag(0, -1, false)
       client.cursor.moveTo(x, y)
       client.history.record(client.orca.s)
-      this.switchTo("INSERT")
-    })
-    client.acels.set('Vi', 'Append',               'A',       () => { client.cursor.move(1, 0); this.switchTo("INSERT") })
-    client.acels.set('Vi', 'Append End Line',      'Shift+A', () => {
-      // modified Shift+A fit for Orca
-      const lastWordIndex = client.orca.w-this.lineRightOfCursor().split('').reverse().slice(1).findIndex(x => x !== '.')
-      console.log(this.lineRightOfCursor().split('').reverse().findIndex(x => x !== '.'))
-      client.cursor.moveTo(lastWordIndex, client.cursor.y)
       this.switchTo("INSERT")
     })
 
@@ -243,7 +245,7 @@ function Vi (client) {
 
     client.commander.onKeyDown = (e) => {
       if (this.chordPrefix == 'r') {
-        if (e.shiftKey && e.key == 'Shift') return // skip just shift key; wait for combo
+        if (e.ctrlKey || e.metaKey || e.altKey || (e.shiftKey && e.key == 'Shift') || e.key == 'CapsLock') { return }
         client.cursor.write(e.key)
         this.resetChord()
         this.normalMode()
@@ -306,24 +308,15 @@ function Vi (client) {
     // Handled similarly as any key in the commandar below, but has to be an acel to override the existing 'Space'
     client.acels.set('Vi', 'Space', 'Space', () => {
       client.orca.writeBlock(client.cursor.x+1, client.cursor.y, this.lineRightOfCursor())
-      client.orca.write(client.cursor.x, client.cursor.y, '.')
+      client.cursor.write('.', false)
       client.cursor.move(1, 0)
     })
 
     client.commander.onKeyDown = (e) => {
-      if (e.ctrlKey || e.metaKey) { return }
-
-      if (
-        !e.altKey &&
-        e.key !== 'CapsLock' &&
-        !(e.shiftKey && e.key == "Shift")
-      ) {
-        console.log(e.keyCode)
-        client.orca.writeBlock(client.cursor.x+1, client.cursor.y, this.lineRightOfCursor())
-        client.cursor.write(e.key, false)
-        client.cursor.move(1, 0)
-      }
-
+      if (e.ctrlKey || e.metaKey || e.altKey || (e.shiftKey && e.key == 'Shift') || e.key == 'CapsLock') { return }
+      client.orca.writeBlock(client.cursor.x+1, client.cursor.y, this.lineRightOfCursor())
+      client.cursor.write(e.key, false)
+      client.cursor.move(1, 0)
       e.stopPropagation()
       // e.preventDefault()
     }
@@ -348,17 +341,9 @@ function Vi (client) {
     })
 
     client.commander.onKeyDown = (e) => {
-      if (e.ctrlKey || e.metaKey) { return }
-
-      if (
-        !e.altKey &&
-        e.key !== 'CapsLock' &&
-        !(e.shiftKey && e.key == "Shift")
-      ) {
-        client.cursor.write(e.key, false)
-        client.cursor.move(1, 0)
-      }
-
+      if (e.ctrlKey || e.metaKey || e.altKey || (e.shiftKey && e.key == 'Shift') || e.key == 'CapsLock') { return }
+      client.cursor.write(e.key, false)
+      client.cursor.move(1, 0)
       e.stopPropagation()
     }
   }
@@ -399,7 +384,7 @@ function Vi (client) {
 
     client.commander.onKeyDown = (e) => {
       if (this.chordPrefix == 'r') {
-        if (e.shiftKey && e.key == 'Shift') return // skip just shift key; wait for combo
+        if (e.ctrlKey || e.metaKey || e.altKey || (e.shiftKey && e.key == 'Shift') || e.key == 'CapsLock') { return }
         client.cursor.write(e.key)
         const block = client.cursor.toRect()
         client.orca.writeBlock(block.x, block.y, `${e.key.repeat(block.w)}\n`.repeat(block.h))
@@ -414,9 +399,66 @@ function Vi (client) {
   this.visualBlockMode = () => {
     const {x,y} = client.cursor
     client.cursor.selectNoUpdate(x, y, 0, 0)
-    client.acels.set('Vi', 'Normal mode', 'Escape', () => { this.switchTo("NORMAL") })
     client.acels.set('Vi', 'Visual Line',  'Shift+V', () => { this.switchTo("VISUAL LINE") })
     this.visualModeCommon()
+
+    client.acels.set('Vi', 'Normal mode', 'Escape', () => {
+      if (written !== '') {
+        for (let i=1; i<rows; i+=1) {
+          const nextY = blockInsertCursor.y+i
+          client.orca.writeBlock(blockInsertCursor.x+written.length, nextY, this.lineRightOfCursor({...blockInsertCursor, y: nextY}))
+          client.orca.writeBlock(blockInsertCursor.x, nextY, written)
+        }
+        client.cursor.moveTo(blockInsertCursor.x, blockInsertCursor.y)
+      } else {
+        client.cursor.moveTo(x+client.cursor.w, y+client.cursor.h)
+        client.cursor.reset()
+      }
+      client.history.record(client.orca.s)
+      this.switchTo("NORMAL")
+    })
+
+    let written = ''
+    let rows = 0
+    let blockInsertCursor = {}
+
+    client.acels.set('Vi', 'Block Insert',  'Shift+I', () => {
+      this.mode = 'INSERT' // just to update the interface
+
+      rows = Math.abs(client.cursor.h)+1
+      blockInsertCursor.x = Math.min(x,x+client.cursor.w)
+      blockInsertCursor.y = Math.min(y, y+client.cursor.h)
+
+      client.cursor.moveTo(blockInsertCursor.x, blockInsertCursor.y)
+      client.cursor.reset()
+
+      const writeKey = (key) => {
+        client.orca.writeBlock(client.cursor.x+1, client.cursor.y, this.lineRightOfCursor())
+        client.cursor.write(key, false)
+        client.cursor.move(1, 0)
+        written += key
+      }
+
+
+      client.acels.set('Vi', 'Space', 'Space', () => writeKey('.'))
+      client.acels.unset('1', '2', '3', '4', '5', '6', '7', '8', '9', 'H', 'J', 'K', 'L', 'Y', 'X', 'R')
+      // client.acels.set('Vi', 'Erase', 'Backspace', () => {
+      //   client.orca.writeBlock(client.cursor.x-1, client.cursor.y, this.lineRightOfCursor())
+      //   client.history.record(client.orca.s)
+      //   client.cursor.move(-1, 0)
+      // })
+      // // just like x in normal mode
+      // client.acels.set('Vi', 'Erase Forward', 'Delete', () => {
+      //   client.orca.writeBlock(client.cursor.x, client.cursor.y, this.lineRightOfCursor())
+      //   client.history.record(client.orca.s)
+      // })
+
+      client.commander.onKeyDown = (e) => {
+        if (e.ctrlKey || e.metaKey || e.altKey || (e.shiftKey && e.key == 'Shift') || e.key == 'CapsLock') { return }
+        writeKey(e.key)
+        e.stopPropagation()
+      }
+    })
   }
 
   this.visualLineMode = () => {
@@ -429,11 +471,11 @@ function Vi (client) {
 
   // Returns the text to the right of our cursor until the end of the line
   // This includes the character under our cursor!
-  this.lineRightOfCursor = () => {
+  this.lineRightOfCursor = (cursor = client.cursor) => {
     return client.orca.getBlock(
-      client.cursor.x,
-      client.cursor.y,
-      client.orca.w-client.cursor.x,
+      cursor.x,
+      cursor.y,
+      client.orca.w-cursor.x,
       1,
     )
   }
