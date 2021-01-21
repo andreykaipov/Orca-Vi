@@ -1,16 +1,11 @@
 'use strict'
 
-    // 
-    // console.log(`Vi mode is now ${this.mode}`)
-    // console.log(client.acels.pipe)
-
 /**
- * Implements a small subset of Vi.
+ * Adds Vi-inspired keybindings.
  *
+ * The code here is honestly a giant mess.
  *
- * todo ~
- *
- * https://github.com/hundredrabbits/Orca/pull/112
+ * TODO case switch (~) in both normal and visual modes
  */
 function Vi (client) {
   this.mode = null
@@ -439,19 +434,8 @@ function Vi (client) {
         written += key
       }
 
-
       client.acels.set('Vi', 'Space', 'Space', () => writeKey('.'))
       client.acels.unset('1', '2', '3', '4', '5', '6', '7', '8', '9', 'H', 'J', 'K', 'L', 'Y', 'X', 'R')
-      // client.acels.set('Vi', 'Erase', 'Backspace', () => {
-      //   client.orca.writeBlock(client.cursor.x-1, client.cursor.y, this.lineRightOfCursor())
-      //   client.history.record(client.orca.s)
-      //   client.cursor.move(-1, 0)
-      // })
-      // // just like x in normal mode
-      // client.acels.set('Vi', 'Erase Forward', 'Delete', () => {
-      //   client.orca.writeBlock(client.cursor.x, client.cursor.y, this.lineRightOfCursor())
-      //   client.history.record(client.orca.s)
-      // })
 
       client.commander.onKeyDown = (e) => {
         if (e.ctrlKey || e.metaKey || e.altKey || (e.shiftKey && e.key == 'Shift') || e.key == 'CapsLock') { return }
@@ -572,6 +556,8 @@ function Vi (client) {
   }
 
   this.jumpWordBack = () => {
+    this.resetChord()
+
     while (true) {
       let line = [...this.lineLeftOfCursor().split('').reverse().slice(1), '.']
       let charUnderCursor = line[0]
