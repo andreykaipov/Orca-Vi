@@ -88,9 +88,12 @@ function Vi (client) {
       client.cursor.moveTo(lastWordIndex, client.cursor.y)
       this.switchTo("INSERT")
     })
+
+    // for o and O, if we're on a word, we want to go back to its beginning before opening a new line.
+    // if we're not on a word, just open a new line above or below the current cursor.
     client.acels.set('Vi', 'Insert Next Line',     'O',       () => {
       const line = this.lineLeftOfCursor().split('').reverse().slice(1)
-      if (line[0] === '.' || line[1] !== '.') this.jumpWordBack()
+      if (line.length > 1 && line[0] !== '.' && line[1] !== '.') this.jumpWordBack() // check to see if we need to go back
       const {x,y} = client.cursor
       client.cursor.selectNoUpdate(0, client.cursor.y+1, client.orca.w, client.orca.h-client.cursor.y-1)
       client.cursor.drag(0, -1, false)
@@ -100,7 +103,7 @@ function Vi (client) {
     })
     client.acels.set('Vi', 'Insert Previous Line', 'Shift+O', () => {
       const line = this.lineLeftOfCursor().split('').reverse().slice(1)
-      if (line[0] === '.' || line[1] !== '.') this.jumpWordBack()
+      if (line.length > 1 && line[0] !== '.' && line[1] !== '.') this.jumpWordBack()
       const {x,y} = client.cursor
       client.cursor.selectNoUpdate(0, client.cursor.y, client.orca.w, client.orca.h-client.cursor.y-1)
       client.cursor.drag(0, -1, false)
@@ -125,12 +128,15 @@ function Vi (client) {
       if (this.chordPrefix.endsWith('d')) {
         const prefix = this.chordPrefix.slice(0, -1)*1 || 1
         if (!isNaN(prefix)) {
+          client.history.record(client.orca.s)
+
           const {x,y} = client.cursor
           client.cursor.selectNoUpdate(0, y, client.orca.w, prefix-1)
           client.cursor.copy()
           client.cursor.selectNoUpdate(0, y+prefix, client.orca.w, client.orca.h-y-prefix-1)
-          client.cursor.drag(0, prefix)
+          client.cursor.drag(0, prefix, false)
           client.cursor.selectNoUpdate(x, y, 0, 0)
+
           client.history.record(client.orca.s)
         } else {
           console.error(`Huh? ${prefix}`)
@@ -280,10 +286,12 @@ function Vi (client) {
       client.history.record(client.orca.s)
     })
 
-    // Same logic as o in normal mode
+    // Same logic as o in normal mode, but check is a bit modified since
+    // we always want to go back apart from when we're at the first character of the line
+    // (in which case we're already at the beginning of the word)
     client.acels.set('Vi', 'Next line', 'Enter', () => {
       const line = this.lineLeftOfCursor().split('').reverse().slice(1)
-      if (line[0] === '.' || line[1] !== '.') this.jumpWordBack()
+      if (line.length > 1 && line[1] !== '.') this.jumpWordBack()
       const {x,y} = client.cursor
       client.cursor.selectNoUpdate(0, client.cursor.y+1, client.orca.w, client.orca.h-client.cursor.y-1)
       client.cursor.drag(0, -1, false)
@@ -291,10 +299,10 @@ function Vi (client) {
       client.cursor.reset()
     })
 
-    // Hmm...
+    // Same as above but just into replace mode, so no drag
     client.acels.set('Vi', 'Next line no linebreak', 'Shift+Enter', () => {
       const line = this.lineLeftOfCursor().split('').reverse().slice(1)
-      if (line[0] === '.' || line[1] !== '.') this.jumpWordBack()
+      if (line.length > 1 && line[1] !== '.') this.jumpWordBack()
       const {x,y} = client.cursor
       client.cursor.moveTo(x, y+1)
       this.switchTo("REPLACE")
