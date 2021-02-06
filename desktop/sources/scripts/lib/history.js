@@ -54,10 +54,17 @@ function History (client) {
 
   this.append = function (data) {
     if (!data) { return }
-    if (this.frames[this.index - 1] && this.frames[this.index - 1].board === data) { return }
 
     const {x,y} = client.cursor
     const cursor = {x,y}
+
+    if (
+      this.frames[this.index-1] &&
+      this.frames[this.index-1].board === data &&
+      this.frames[this.index-1].cursor.x == x &&
+      this.frames[this.index-1].cursor.y == y
+    ) { return }
+
     this.frames.push({board: data, cursor: cursor})
   }
 
