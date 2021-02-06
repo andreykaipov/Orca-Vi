@@ -12,6 +12,7 @@ function Cursor (client) {
   this.maxY = 0
 
   this.ins = false
+  this.skipPaste = false
 
   this.start = () => {
     document.onmousedown = this.onMouseDown
@@ -232,6 +233,7 @@ function Cursor (client) {
   }
 
   this.onPaste = (e) => {
+    if (this.skipPaste) return
     const data = e.clipboardData.getData('text/plain').trim()
     client.orca.writeBlock(this.minX, this.minY, data, this.ins)
     client.history.record(client.orca.s)

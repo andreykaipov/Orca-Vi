@@ -125,20 +125,21 @@ function Commander (client) {
     this.preview()
   }
 
-  this.run = function () {
+  this.run = () => {
     const tool = this.isActive === true ? 'commander' : 'cursor'
     client[tool].trigger()
     client.update()
   }
 
-  this.trigger = function (msg = this.query, origin = null, stopping = true) {
+  this.trigger = (msg = this.query, origin = null, stopping = true) => {
+    if (msg.length > 0 && msg[0] == ':') msg = msg.slice(1)
+    if (msg.length > 0) this.recordHistory(msg)
+
     const cmd = `${msg}`.split(':')[0].trim().replace(/\W/g, '').toLowerCase()
     const val = `${msg}`.substr(cmd.length + 1)
     const fn = this.actives[cmd]
     if (!fn) { console.warn('Commander', `Unknown message: ${msg}`); this.stop(); return }
     fn(new Param(val), origin)
-    this.history.push(msg)
-    this.historyIndex = this.history.length
     if (stopping) {
       this.stop()
     }
@@ -149,6 +150,12 @@ function Commander (client) {
     const val = `${msg}`.substr(cmd.length + 1)
     if (!this.passives[cmd]) { return }
     this.passives[cmd](new Param(val), false)
+  }
+
+  this.recordHistory = (msg, limit=30) => {
+    this.history.push(msg)
+    if (this.history.length > limit) this.history.shift()
+    this.historyIndex = this.history.length
   }
 
   // Events

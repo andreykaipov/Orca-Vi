@@ -65,11 +65,13 @@ Key | Action
 `s` | Insert mode at the start of the line
 `a` | Insert mode after the current character
 `A` | Insert mode after the last word on the line
-`o` | Insert mode on the line below the current word beginning
-`O` | Insert mode on the line above the current word beginning
+`o` | Insert mode on the line below the current word beginning; otherwise directly below
+`O` | Insert mode on the line above the current word beginning; otherwise directly above
 `R` | Replace mode
 `C-v` | Visual block mode
 `V` | Visual line mode
+`:` | Command mode
+`/` | Find mode
 
 ### visual mode
 
@@ -115,3 +117,22 @@ pressing `Shift+Enter`. This will not break for a new line.
 ### replace mode
 
 It's insert mode but text gets replaced by directly typing over it.
+
+### command mode
+
+Orca's command mode. See
+[its documentation](https://github.com/hundredrabbits/Orca#commands).
+
+Key | Action
+----| ------
+`Ctrl+U` | Clear current command
+`Ctrl+P` | Traverse history backwards
+`Ctrl+N` | Traverse history forwards
+`ArrowUp` | Traverse history backwards
+`ArrowDown` | Traverse history forwards
+
+### find mode
+
+Key | Action
+----| ------
+`n` | Search forward (not implemented)

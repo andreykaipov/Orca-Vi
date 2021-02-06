@@ -39,25 +39,47 @@ function Vi (client) {
                         'W', 'E', 'B', 'G', 'Shift+G',
                         'P', 'R',
                         'U', 'Ctrl+R',
-                        'Ctrl+V', 'Shift+V',
+                        'CmdOrCtrl+V', 'Shift+V',
+                        'Shift+:', '/',
                         '1', '2', '3', '4', '5', '6', '7', '8', '9',
       /* insert mode */ 'Space', 'Delete', 'Enter',
       /* visual mode */ 'Shift+H', 'Shift+J', 'Shift+K', 'Shift+L', 'Y',
                         'Alt+H', 'Alt+J', 'Alt+K', 'Alt+L',
                         'Shift+Alt+H', 'Shift+Alt+J', 'Shift+Alt+K', 'Shift+Alt+L',
+      /* cmd or find */ 'CmdOrCtrl+P', 'CmdOrCtrl+N', 'CmdOrCtrl+U', 'N',
     )
 
-    // We overwrite these so they don't work in any mode
+    // Some key bindings from the client are just super annoying because
+    // I've got butter fingers, or they aren't necessary because we define
+    // the bindings' actions within a mode ourselves.
     // Easily reverted by a client.install()
-    client.acels.set('Cursor', 'Toggle Insert Mode', 'CmdOrCtrl+I', () => {})
-    client.acels.set('Edit', 'Erase Selection', 'Backspace', () => {})
-    client.acels.set('Edit', 'Undo', 'CmdOrCtrl+Z', () => {})
-    client.acels.set('Edit', 'Redo', 'CmdOrCtrl+Shift+Z', () => {})
-    client.acels.set('Edit', 'Paste', 'CmdOrCtrl+V', () => {})
-    client.acels.set('Orca', 'Fullscreen', 'CmdOrCtrl+Enter', () => {})
-    client.acels.set('Clock', 'Play/Pause', 'Space', () => {})
-    client.acels.set('Project', 'Toggle Commander', 'CmdOrCtrl+K', () => {})
-    client.acels.set('Project', 'Find', 'CmdOrCtrl+J', () => {})
+    client.acels.set('', '', 'Space', () => {})
+    client.acels.set('', '', 'Backspace', () => {})
+    client.acels.set('', '', 'CmdOrCtrl+I', () => {})
+    client.acels.set('', '', 'CmdOrCtrl+Z', () => {})
+    client.acels.set('', '', 'CmdOrCtrl+Shift+Z', () => {})
+    client.acels.set('', '', 'CmdOrCtrl+V', () => {}) // paste
+    client.acels.set('', '', 'CmdOrCtrl+N', () => {}) // source new file
+    client.acels.set('', '', 'CmdOrCtrl+P', () => {}) // trigger operator
+    client.acels.set('', '', 'CmdOrCtrl+Enter', () => {})
+    client.acels.set('', '', 'CmdOrCtrl+K', () => {})
+    client.acels.set('', '', 'CmdOrCtrl+J', () => {})
+    client.acels.set('', '', 'CmdOrCtrl+H', () => {}) // normally Ctrl+H would hide Orca on Windows
+    client.acels.set('', '', 'CmdOrCtrl+J', () => {}) // Orca's find, use / in normal instead
+    client.acels.set('', '', 'CmdOrCtrl+K', () => {}) // Orca's commander, just $<cmd> instead
+    client.acels.set('', '', 'CmdOrCtrl+L', () => {})
+    client.acels.set('', '', 'CmdOrCtrl+ArrowUp', () => {})
+    client.acels.set('', '', 'CmdOrCtrl+ArrowRight', () => {})
+    client.acels.set('', '', 'CmdOrCtrl+ArrowDown', () => {})
+    client.acels.set('', '', 'CmdOrCtrl+ArrowLeft', () => {})
+    client.acels.set('', '', 'Shift+ArrowUp', () => {})
+    client.acels.set('', '', 'Shift+ArrowRight', () => {})
+    client.acels.set('', '', 'Shift+ArrowDown', () => {})
+    client.acels.set('', '', 'Shift+ArrowLeft', () => {})
+    client.acels.set('', '', 'CmdOrCtrl+Shift+ArrowUp', () => {})
+    client.acels.set('', '', 'CmdOrCtrl+Shift+ArrowRight', () => {})
+    client.acels.set('', '', 'CmdOrCtrl+Shift+ArrowDown', () => {})
+    client.acels.set('', '', 'CmdOrCtrl+Shift+ArrowLeft', () => {})
   }
 
   this.switchTo = (mode) => {
@@ -71,6 +93,8 @@ function Vi (client) {
       case "REPLACE": this.replaceMode(); break
       case "VISUAL BLOCK": this.visualBlockMode(); break
       case "VISUAL LINE": this.visualLineMode(); break
+      case "COMMAND": this.commandMode(); break
+      case "FIND": this.findMode(); break
     }
 
     this.mode = mode
@@ -118,6 +142,10 @@ function Vi (client) {
     // into visual modes; normal visual mode doesn't make sense because Orca selections can't wrap lines
     client.acels.set('Vi', 'Visual Block', 'CmdOrCtrl+V',  () => { this.switchTo("VISUAL BLOCK") })
     client.acels.set('Vi', 'Visual Line',  'Shift+V', () => { this.switchTo("VISUAL LINE") })
+
+    // command and find modes
+    client.acels.set('Vi', 'Command', 'Shift+:', () => { this.switchTo("COMMAND") })
+    client.acels.set('Vi', 'Find', '/', () => { this.switchTo("FIND") })
 
     // deletions
     client.acels.set('Vi', 'Erase', 'X', () => {
@@ -264,6 +292,70 @@ function Vi (client) {
     })
 
     client.acels.set('Vi', 'Play/Pause', 'Space', () => client.clock.togglePlay(false))
+  }
+
+  const traverseHistoryBackwards = () => {
+    if (client.commander.history.length == 0) return
+    client.commander.historyIndex = Math.max(0, client.commander.historyIndex-1)
+    client.commander.query = ':'+client.commander.history[client.commander.historyIndex]
+  }
+
+  const traverseHistoryForwards = () => {
+    if (client.commander.history.length == 0) return
+    if (client.commander.history.length-1 == client.commander.historyIndex) return
+    client.commander.historyIndex = Math.min(client.commander.history.length-1, client.commander.historyIndex+1)
+    client.commander.query = ':'+client.commander.history[client.commander.historyIndex]
+  }
+
+  this.commandMode = () => {
+    client.acels.set('', '', 'ArrowUp', () => {})
+    client.acels.set('', '', 'ArrowRight', () => {})
+    client.acels.set('', '', 'ArrowDown', () => {})
+    client.acels.set('', '', 'ArrowLeft', () => {})
+
+    client.commander.start(':')
+    client.commander.onKeyDown = (e) => { client.commander.write(e.key); e.stopPropagation() }
+
+    client.acels.set('Vi', 'Erase', 'Backspace', () => { if (client.commander.query !== ':') client.commander.erase() })
+    client.acels.set('Vi', 'Run', 'Enter', () => { client.commander.run(); this.switchTo("NORMAL") })
+    client.acels.set('Vi', 'Normal mode', 'Escape', () => { client.commander.stop(); this.switchTo("NORMAL") })
+
+    client.acels.set('', '', 'CmdOrCtrl+U', () => { client.commander.query = ':' })
+    client.acels.set('', '', 'CmdOrCtrl+P', traverseHistoryBackwards)
+    client.acels.set('', '', 'CmdOrCtrl+N', traverseHistoryForwards)
+    client.acels.set('', '', 'ArrowUp', traverseHistoryBackwards)
+    client.acels.set('', '', 'ArrowDown', traverseHistoryForwards)
+
+    client.acels.set('Vi', 'Paste', 'CmdOrCtrl+V', () => {
+      const write = (e) => { client.commander.query += e.clipboardData.getData('Text').trim() }
+      client.cursor.skipPaste = true
+      document.addEventListener('paste', write)
+      document.execCommand('paste')
+      document.removeEventListener('paste', write)
+      client.cursor.skipPaste = false
+    })
+  }
+
+  this.findMode = () => {
+    client.commander.start('find:')
+
+    client.commander.onKeyDown = (e) => {
+      console.log(e.key)
+      client.commander.write(e.key)
+      e.stopPropagation()
+    }
+    client.acels.set('Vi', 'Erase', 'Backspace', () => {
+      this.switchTo("NORMAL")
+    })
+    client.acels.set('Vi', 'Normal mode', 'Enter', () => {
+      this.switchTo("NORMAL")
+    })
+    client.acels.set('Vi', 'Normal mode', 'Escape', () => {
+      this.switchTo("NORMAL")
+    })
+    client.acels.set('Vi', 'Next find', 'N', () => {
+      console.log("HELOO")
+    })
   }
 
   this.insertMode = () => {
