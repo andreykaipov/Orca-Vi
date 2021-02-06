@@ -383,17 +383,24 @@ function Vi (client) {
       })
     })
 
-    client.acels.set('Vi', 'Replace', 'R', () => { this.chordPrefix = 'r'; this.resetAcels() })
+    const handleReplaceKey = (key) => {
+      const block = client.cursor.toRect()
+      client.orca.writeBlock(block.x, block.y, `${key.repeat(block.w)}\n`.repeat(block.h))
+      client.history.record(client.orca.s)
+      this.resetChord()
+      this.switchTo("NORMAL")
+    }
+
+    client.acels.set('Vi', 'Replace', 'R', () => {
+      this.chordPrefix = 'r';
+      this.resetAcels()
+      client.acels.set('Vi', '', 'Space', () => handleReplaceKey('.'))
+    })
 
     client.commander.onKeyDown = (e) => {
       if (this.chordPrefix == 'r') {
         if (e.ctrlKey || e.metaKey || e.altKey || (e.shiftKey && e.key == 'Shift') || e.key == 'CapsLock') { return }
-        client.cursor.write(e.key)
-        const block = client.cursor.toRect()
-        client.orca.writeBlock(block.x, block.y, `${e.key.repeat(block.w)}\n`.repeat(block.h))
-        client.history.record(client.orca.s)
-        this.resetChord()
-        this.switchTo("NORMAL")
+        handleReplaceKey(e.key)
       }
       e.stopPropagation()
     }
