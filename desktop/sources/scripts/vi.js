@@ -294,39 +294,28 @@ function Vi (client) {
     client.acels.set('Vi', 'Play/Pause', 'Space', () => client.clock.togglePlay(false))
   }
 
-  const traverseHistoryBackwards = () => {
-    if (client.commander.history.length == 0) return
-    client.commander.historyIndex = Math.max(0, client.commander.historyIndex-1)
-    client.commander.query = ':'+client.commander.history[client.commander.historyIndex]
+  const traverseHistoryBackwards = (type) => {
+    if (client.commander[`${type}History`].length == 0) return
+    client.commander[`${type}HistoryIndex`] = Math.max(0, client.commander[`${type}HistoryIndex`]-1)
+    client.commander.query = client.commander[`${type}History`][client.commander[`${type}HistoryIndex`]]
   }
 
-  const traverseHistoryForwards = () => {
-    if (client.commander.history.length == 0) return
-    if (client.commander.history.length-1 == client.commander.historyIndex) return
-    client.commander.historyIndex = Math.min(client.commander.history.length-1, client.commander.historyIndex+1)
-    client.commander.query = ':'+client.commander.history[client.commander.historyIndex]
+  const traverseHistoryForwards = (type) => {
+    if (client.commander[`${type}History`].length == 0) return
+    if (client.commander[`${type}History`].length-1 == client.commander[`${type}HistoryIndex`]) return
+    client.commander[`${type}HistoryIndex`] = Math.min(client.commander[`${type}History`].length-1, client.commander[`${type}HistoryIndex`]+1)
+    client.commander.query = client.commander[`${type}History`][client.commander[`${type}HistoryIndex`]]
   }
 
-  this.commandMode = () => {
+  this.commanderModeCommon = () => {
     client.acels.set('', '', 'ArrowUp', () => {})
     client.acels.set('', '', 'ArrowRight', () => {})
     client.acels.set('', '', 'ArrowDown', () => {})
     client.acels.set('', '', 'ArrowLeft', () => {})
 
-    client.commander.start(':')
-    client.commander.onKeyDown = (e) => { client.commander.write(e.key); e.stopPropagation() }
-
-
     client.acels.set('Vi', '', 'Space', () => client.commander.query += ' ')
-    client.acels.set('Vi', '', 'Backspace', () => { if (client.commander.query !== ':') client.commander.erase() })
-    client.acels.set('Vi', 'Run', 'Enter', () => { client.commander.run(); this.switchTo("NORMAL") })
-    client.acels.set('Vi', 'Normal mode', 'Escape', () => { client.commander.stop(); this.switchTo("NORMAL") })
-
-    client.acels.set('', '', 'CmdOrCtrl+U', () => { client.commander.query = ':' })
-    client.acels.set('', '', 'CmdOrCtrl+P', traverseHistoryBackwards)
-    client.acels.set('', '', 'CmdOrCtrl+N', traverseHistoryForwards)
-    client.acels.set('', '', 'ArrowUp', traverseHistoryBackwards)
-    client.acels.set('', '', 'ArrowDown', traverseHistoryForwards)
+    client.acels.set('Vi', '', 'Backspace', () => { if (client.commander.query !== '/') client.commander.erase() })
+    client.acels.set('Vi', '', 'Escape', () => { client.commander.stop(); this.switchTo("NORMAL") })
 
     client.acels.set('Vi', 'Paste', 'CmdOrCtrl+V', () => {
       const write = (e) => { client.commander.query += e.clipboardData.getData('Text').trim() }
@@ -338,25 +327,72 @@ function Vi (client) {
     })
   }
 
-  this.findMode = () => {
-    client.commander.start('find:')
+  this.commandMode = () => {
+    this.commanderModeCommon()
 
-    client.commander.onKeyDown = (e) => {
-      console.log(e.key)
-      client.commander.write(e.key)
-      e.stopPropagation()
-    }
-    client.acels.set('Vi', 'Erase', 'Backspace', () => {
+    client.commander.start(':')
+    client.commander.onKeyDown = (e) => { client.commander.write(e.key); e.stopPropagation() }
+
+    client.acels.set('Vi', 'Run', 'Enter', () => {
+      client.commander.run()
       this.switchTo("NORMAL")
     })
-    client.acels.set('Vi', 'Normal mode', 'Enter', () => {
+
+    client.acels.set('', '', 'CmdOrCtrl+U', () => { client.commander.query = ':' })
+    client.acels.set('', '', 'CmdOrCtrl+P', () => traverseHistoryBackwards('cmd'))
+    client.acels.set('', '', 'CmdOrCtrl+N', () => traverseHistoryForwards('cmd'))
+    client.acels.set('', '', 'ArrowUp', () => traverseHistoryBackwards('cmd'))
+    client.acels.set('', '', 'ArrowDown', () => traverseHistoryForwards('cmd'))
+
+    client.acels.set('Vi', 'Run', 'Enter', () => {
+      client.commander.run()
       this.switchTo("NORMAL")
     })
-    client.acels.set('Vi', 'Normal mode', 'Escape', () => {
-      this.switchTo("NORMAL")
-    })
-    client.acels.set('Vi', 'Next find', 'N', () => {
-      console.log("HELOO")
+  }
+
+  this.findMode = () => {
+    this.commanderModeCommon()
+
+    client.commander.start('/')
+    client.commander.onKeyDown = (e) => { client.commander.write(e.key); e.stopPropagation() }
+
+    client.acels.set('', '', 'CmdOrCtrl+U', () => { client.commander.query = '/' })
+    client.acels.set('', '', 'CmdOrCtrl+P', () => traverseHistoryBackwards('find'))
+    client.acels.set('', '', 'CmdOrCtrl+N', () => traverseHistoryForwards('find'))
+    client.acels.set('', '', 'ArrowUp', () => traverseHistoryBackwards('find'))
+    client.acels.set('', '', 'ArrowDown', () => traverseHistoryForwards('find'))
+
+    client.acels.set('Vi', 'Run', 'Enter', () => {
+      const search = client.commander.query.slice(1)
+      client.commander.run()
+
+      const cursorPositions = []
+
+      client.acels.set('Vi', '', 'N', () => {
+        const current = {x: client.cursor.x, y: client.cursor.y}
+        const peek = cursorPositions[cursorPositions.length-1] || {x:-1, y:-1}
+
+        console.log(current.x, current.y)
+        console.log(peek.x !== current.x && peek.y !== current.y)
+        if (peek.x !== current.x || peek.y !== current.y) cursorPositions.push(current)
+        console.log(cursorPositions)
+
+        // find the next match by moving cursor to the right once
+        client.cursor.move(1, 0)
+        client.cursor.find(search)
+
+        // move back if nothing was found
+        if (client.cursor.x == current.x+1 && client.cursor.y == current.y+1) client.cursor.move(-1, 0)
+      })
+
+      client.acels.set('Vi', '', 'Shift+N', () => {
+        console.log(cursorPositions)
+        if (cursorPositions.length == 0) return
+        const pos = cursorPositions.pop()
+        client.cursor.moveTo(pos.x, pos.y)
+      })
+
+      client.acels.set('Vi', 'Find', '/', () => { this.switchTo("FIND") })
     })
   }
 

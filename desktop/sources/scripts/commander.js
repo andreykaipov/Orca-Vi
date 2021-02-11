@@ -3,12 +3,15 @@
 function Commander (client) {
   this.isActive = false
   this.query = ''
-  this.history = []
-  this.historyIndex = 0
+  this.cmdHistory = []
+  this.cmdHistoryIndex = 0
+  this.findHistory = []
+  this.findHistoryIndex = 0
 
   // Library
 
   this.passives = {
+    '/': (p) => { client.cursor.find(p.str) },
     find: (p) => { client.cursor.find(p.str) },
     select: (p) => { client.cursor.select(p.x, p.y, p.w || 0, p.h || 0) },
     inject: (p) => {
@@ -60,7 +63,9 @@ function Commander (client) {
       if (p.parts[1]) { client.theme.set('b_med', p.parts[1]) }
       if (p.parts[2]) { client.theme.set('b_high', p.parts[2]) }
     },
+    colo: (p) => this.actives['color'](p),
     // Edit
+    '/': (p) => { client.cursor.find(p.str) },
     find: (p) => { client.cursor.find(p.str) },
     select: (p) => { client.cursor.select(p.x, p.y, p.w || 0, p.h || 0) },
     inject: (p, origin) => {
@@ -107,9 +112,14 @@ function Commander (client) {
   }
 
   this.stop = () => {
+    if (this.query.startsWith('/')) {
+      this.findHistoryIndex = this.findHistory.length
+    } else {
+      this.cmdHistoryIndex = this.cmdHistory.length
+    }
+
     this.isActive = false
     this.query = ''
-    this.historyIndex = this.history.length
     client.update()
   }
 
@@ -134,12 +144,20 @@ function Commander (client) {
   }
 
   this.trigger = (msg = this.query, origin = null, stopping = true) => {
-    if (msg.length > 0 && msg[0] == ':') msg = msg.slice(1)
-    if (msg.length > 0) this.recordHistory(msg)
+    let cmd = ''
+    let val = ''
+    this.recordHistory(msg)
 
-    const split = `${msg}`.split(' ')
-    const cmd = split[0].trim().toLowerCase()
-    const val = split[1].trim()
+    if (msg.startsWith('/')) {
+      cmd = '/'
+      val = msg.slice(1)
+    } else {
+      const split = msg.split(' ')
+      cmd = split[0].trim().toLowerCase()
+      val = msg.substring(cmd.length + 1)
+      if (cmd.startsWith(':')) cmd = cmd.slice(1)
+    }
+
     const fn = this.actives[cmd]
     if (!fn) { console.warn('Commander', `Unknown message: ${msg}`); this.stop(); return }
     fn(new Param(val), origin)
@@ -149,16 +167,33 @@ function Commander (client) {
   }
 
   this.preview = function (msg = this.query) {
-    const cmd = `${msg}`.split(':')[0].toLowerCase()
-    const val = `${msg}`.substr(cmd.length + 1)
+    let cmd = ''
+    let val = ''
+
+    if (msg.startsWith('/')) {
+      cmd = '/'
+      val = msg.slice(1)
+    } else {
+      const split = msg.split(' ')
+      cmd = split[0].trim().toLowerCase()
+      val = msg.substring(cmd.length + 1)
+      if (cmd.startsWith(':')) cmd = cmd.slice(1)
+    }
+
     if (!this.passives[cmd]) { return }
     this.passives[cmd](new Param(val), false)
   }
 
   this.recordHistory = (msg, limit=30) => {
-    this.history.push(msg)
-    if (this.history.length > limit) this.history.shift()
-    this.historyIndex = this.history.length
+    if (msg.startsWith('/')) {
+      this.findHistory.push(msg)
+      if (this.findHistory.length > limit) this.findHistory.shift()
+      this.findHistoryIndex = this.findHistory.length
+    } else {
+      this.cmdHistory.push(msg)
+      if (this.cmdHistory.length > limit) this.cmdHistory.shift()
+      this.cmdHistoryIndex = this.cmdHistory.length
+    }
   }
 
   // Events

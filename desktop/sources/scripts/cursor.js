@@ -113,11 +113,19 @@ function Cursor (client) {
     if (record) client.history.record(client.orca.s)
   }
 
-  this.find = (str) => {
-    const i = client.orca.s.indexOf(str)
-    if (i < 0) { return }
-    const pos = client.orca.posAt(i)
-    this.select(pos.x, pos.y, str.length - 1, 0)
+  this.find = (str, fromBeginning=false) => {
+    str = str.replace(/ /g, '.')
+
+    const currentPos = fromBeginning ? 0 : client.orca.indexAt(this.x, this.y)
+    const i = client.orca.s.slice(currentPos).indexOf(str)
+
+    // if not found from our cursor position, try again from the beginning
+    if (i < 0 && fromBeginning) return false
+    if (i < 0) { this.find(str, true); return false }
+
+    const pos = client.orca.posAt(i+currentPos)
+    this.select(pos.x, pos.y, Math.max(0, str.length - 1), 0)
+    return true
   }
 
   this.inspect = () => {
