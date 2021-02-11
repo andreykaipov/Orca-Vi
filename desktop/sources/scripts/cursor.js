@@ -199,14 +199,23 @@ function Cursor (client) {
   this.onMouseMove = (e) => {
     if (!this.mouseFrom) { return }
     const pos = this.mousePick(e.clientX, e.clientY)
-    this.select(this.mouseFrom.x, this.mouseFrom.y, pos.x - this.mouseFrom.x, pos.y - this.mouseFrom.y)
+    const dx = pos.x - this.mouseFrom.x
+    const dy = pos.y - this.mouseFrom.y
+    this.select(this.mouseFrom.x, this.mouseFrom.y, dx, dy)
   }
 
   this.onMouseUp = (e) => {
-    if (this.mouseFrom) {
-      const pos = this.mousePick(e.clientX, e.clientY)
-      this.select(this.mouseFrom.x, this.mouseFrom.y, pos.x - this.mouseFrom.x, pos.y - this.mouseFrom.y)
-    }
+    if (!this.mouseFrom) { return }
+
+    const pos = this.mousePick(e.clientX, e.clientY)
+    const dx = pos.x - this.mouseFrom.x
+    const dy = pos.y - this.mouseFrom.y
+
+    if (dx === 0 && dy === 0 && client.vi.mode !== "NORMAL") client.vi.switchTo("NORMAL")
+    if ((dx !== 0 || dy !== 0) && client.vi.mode !== "VISUAL BLOCK") client.vi.switchTo("VISUAL BLOCK")
+
+    this.select(this.mouseFrom.x, this.mouseFrom.y, pos.x - this.mouseFrom.x, pos.y - this.mouseFrom.y)
+
     this.mouseFrom = null
   }
 
