@@ -137,8 +137,9 @@ function Commander (client) {
     if (msg.length > 0 && msg[0] == ':') msg = msg.slice(1)
     if (msg.length > 0) this.recordHistory(msg)
 
-    const cmd = `${msg}`.split(':')[0].trim().replace(/\W/g, '').toLowerCase()
-    const val = `${msg}`.substr(cmd.length + 1)
+    const split = `${msg}`.split(' ')
+    const cmd = split[0].trim().toLowerCase()
+    const val = split[1].trim()
     const fn = this.actives[cmd]
     if (!fn) { console.warn('Commander', `Unknown message: ${msg}`); this.stop(); return }
     fn(new Param(val), origin)

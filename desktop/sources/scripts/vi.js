@@ -316,7 +316,9 @@ function Vi (client) {
     client.commander.start(':')
     client.commander.onKeyDown = (e) => { client.commander.write(e.key); e.stopPropagation() }
 
-    client.acels.set('Vi', 'Erase', 'Backspace', () => { if (client.commander.query !== ':') client.commander.erase() })
+
+    client.acels.set('Vi', '', 'Space', () => client.commander.query += ' ')
+    client.acels.set('Vi', '', 'Backspace', () => { if (client.commander.query !== ':') client.commander.erase() })
     client.acels.set('Vi', 'Run', 'Enter', () => { client.commander.run(); this.switchTo("NORMAL") })
     client.acels.set('Vi', 'Normal mode', 'Escape', () => { client.commander.stop(); this.switchTo("NORMAL") })
 
