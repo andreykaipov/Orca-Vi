@@ -28,6 +28,7 @@ function Client (body) {
   this.cursor = new Cursor(this)
   this.commander = new Commander(this)
   this.clock = new Clock(this)
+
   this.vi = new Vi(this)
 
   // Settings
@@ -77,7 +78,7 @@ function Client (body) {
     this.acels.set('Project', 'Toggle Commander', 'CmdOrCtrl+K', () => { this.commander.start() })
     this.acels.set('Project', 'Run Commander', 'Enter', () => { this.commander.run() })
 
-    this.acels.set('Cursor', 'Toggle Vi Mode', 'CmdOrCtrl+M', () => { this.vi.toggle() })
+    this.acels.set('Cursor', 'Toggle Vi Mode', 'CmdOrCtrl+Shift+?', () => { this.vi.toggle() })
     this.acels.set('Cursor', 'Toggle Insert Mode', 'CmdOrCtrl+I', () => { this.cursor.ins = !this.cursor.ins })
     this.acels.set('Cursor', 'Toggle Block Comment', 'CmdOrCtrl+/', () => { this.cursor.comment() })
     this.acels.set('Cursor', 'Trigger Operator', 'CmdOrCtrl+P', () => { this.cursor.trigger() })
