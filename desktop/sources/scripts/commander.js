@@ -17,6 +17,7 @@ function Commander (client) {
         const block = client.source.cache[p._str + '.orca']
         const rect = client.orca.toRect(block)
         client.cursor.scaleTo(rect.x, rect.y)
+        client.history.record(client.orca.s)
       }
     }
   }
@@ -67,6 +68,7 @@ function Commander (client) {
       if (!block) { console.warn('Commander', 'Unknown block: ' + p._str); return }
       client.orca.writeBlock(origin ? origin.x : client.cursor.x, origin ? origin.y : client.cursor.y, block)
       client.cursor.scaleTo(0, 0)
+      client.history.record(client.orca.s)
     },
     write: (p) => {
       client.orca.writeBlock(p._x || client.cursor.x, p._y || client.cursor.y, p._str)
