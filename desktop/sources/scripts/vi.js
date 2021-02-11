@@ -190,7 +190,11 @@ function Vi (client) {
 
     // line start and end
     client.acels.set('Vi', 'Start of line', '0', () => {
-      if (this.chordPrefix.endsWith('d')) {
+      if (this.chordPrefix.endsWith('v')) {
+        this.switchTo("VISUAL BLOCK")
+        this.resetChord()
+        client.cursor.scaleTo(-client.cursor.x, client.cursor.h)
+      } else if (this.chordPrefix.endsWith('d')) {
         const {x,y} = client.cursor
         client.cursor.selectNoUpdate(x-1, y, -client.cursor.x, 0)
         client.cursor.cut()
@@ -206,7 +210,11 @@ function Vi (client) {
       }
     })
     client.acels.set('Vi', 'End of line', 'Shift+$', () => {
-      if (this.chordPrefix.endsWith('d')) {
+      if (this.chordPrefix.endsWith('v')) {
+        this.switchTo("VISUAL BLOCK")
+        this.resetChord()
+        client.cursor.scaleTo(client.orca.w-client.cursor.x-1, client.cursor.h)
+      } else if (this.chordPrefix.endsWith('d')) {
         const {x,y} = client.cursor
         client.cursor.selectNoUpdate(x, y, client.orca.w, 0)
         client.cursor.cut()
