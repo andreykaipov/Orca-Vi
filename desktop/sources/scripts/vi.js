@@ -160,11 +160,20 @@ function Vi (client) {
           client.history.record(client.orca.s)
 
           const {x,y} = client.cursor
-          client.cursor.selectNoUpdate(0, y, client.orca.w, prefix-1)
-          client.cursor.copy()
-          client.cursor.selectNoUpdate(0, y+prefix, client.orca.w, client.orca.h-y-prefix-1)
-          client.cursor.drag(0, prefix, false)
-          client.cursor.selectNoUpdate(x, y, 0, 0)
+
+          const linesBelowCursor = client.orca.h-y
+          const linesToCut = Math.min(linesBelowCursor, prefix)-1
+          const delta = linesBelowCursor-linesToCut
+
+          client.cursor.selectNoUpdate(0, y, client.orca.w, linesToCut)
+          client.cursor.cut()
+
+          if (delta > 1) {
+            client.cursor.selectNoUpdate(0, y+prefix, client.orca.w, delta)
+            client.cursor.drag(0, prefix)
+          }
+
+          client.cursor.select(x, y, 0, 0)
 
           client.history.record(client.orca.s)
         } else {
