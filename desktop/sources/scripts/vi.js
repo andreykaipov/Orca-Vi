@@ -247,10 +247,21 @@ function Vi (client) {
     client.acels.set('Vi', 'Go to word ending', 'E', () => this.jumpWordEnding())
     client.acels.set('Vi', 'Go back word', 'B', () => this.jumpWordBack())
     client.acels.set('Vi', 'Goto', 'G', () => {
+      const {x,y,w,h} = client.cursor
+
       if (this.chordPrefix.endsWith('vg')) {
         this.switchTo("VISUAL BLOCK")
         this.resetChord()
-        client.cursor.scaleTo(client.cursor.w, -client.cursor.y)
+        client.cursor.scaleTo(w, -y)
+      } else if (this.chordPrefix.endsWith('dg')) {
+        client.history.record(client.orca.s)
+        client.cursor.selectNoUpdate(0, 0, client.orca.w, y)
+        client.cursor.cut()
+        client.cursor.selectNoUpdate(0, y+1, client.orca.w, client.orca.h-y-2)
+        client.cursor.drag(0, y+1)
+        client.cursor.reset()
+        this.resetChord()
+        client.history.record(client.orca.s)
       } else if (this.chordPrefix.endsWith('g')) {
         const prefix = this.chordPrefix.slice(0, -1)
         if (prefix === '') { client.cursor.moveTo(0, 0) }
@@ -262,10 +273,19 @@ function Vi (client) {
       }
     })
     client.acels.set('Vi', 'Goto End', 'Shift+G', () => {
+      const {x,y,w,h} = client.cursor
+
       if (this.chordPrefix.endsWith('v')) {
         this.switchTo("VISUAL BLOCK")
         this.resetChord()
-        client.cursor.scaleTo(client.cursor.w, client.orca.h-client.cursor.y-1)
+        client.cursor.scaleTo(w, client.orca.h-y-1)
+      } else if (this.chordPrefix.endsWith('d')) {
+        client.history.record(client.orca.s)
+        client.cursor.selectNoUpdate(0, y, client.orca.w, client.orca.h-y-1)
+        client.cursor.cut()
+        client.cursor.reset()
+        this.resetChord()
+        client.history.record(client.orca.s)
       } else {
         client.cursor.moveTo(0, client.orca.h)
       }
