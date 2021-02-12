@@ -5,6 +5,7 @@ a hacky Vi mode.
 
 Please see their repo for Orca documentation.
 
+
 ## contents
 
 * [contents](#contents)
@@ -14,17 +15,16 @@ Please see their repo for Orca documentation.
   + [deletions](#deletions)
   + [replacements](#replacements)
   + [mode switches](#mode-switches)
-* [visual mode](#visual-mode)
-  + [common](#common)
-    - [scaling](#scaling)
-    - [dragging](#dragging)
-    - [replacements](#replacements-1)
-  + [visual line mode](#visual-line-mode)
-  + [visual block mode](#visual-block-mode)
+* [visual modes](#visual-modes)
+  + [scaling](#scaling)
+  + [dragging](#dragging)
+  + [replacements](#replacements-1)
+  + [mode switches](#mode-switches-1)
 * [insert mode](#insert-mode)
 * [replace mode](#replace-mode)
 * [command mode](#command-mode)
 * [find mode](#find-mode)
+
 
 ## info
 
@@ -33,6 +33,7 @@ We start in Vi mode by default. Use `Ctrl+Shift+/` to toggle it.
 In the tables below, `C` and `M` represent `Ctrl` and `Alt` respectively.
 
 With all modes, `Esc` will switch us back normal mode.
+
 
 ## normal mode
 
@@ -104,13 +105,14 @@ Key | Action
 `:` | Command mode
 `/` | Find mode
 
-## visual mode
 
-The following is common across both visual line and visual block modes:
+## visual modes
 
-### common
+We have a choice of visual line and visual block selection. The former is
+really just a convenience. For example, we can easily mimic line selection
+through `0v$`, saving two strokes over `V`.
 
-#### scaling
+### scaling
 
 Key | Action
 ----| ------
@@ -128,7 +130,7 @@ Key | Action
 `M-k` | Scales our selection one grid square unit up
 `M-l` | Scales our selection one grid square unit right
 
-#### dragging
+### dragging
 
 Key | Action
 ----| ------
@@ -142,7 +144,7 @@ Key | Action
 `M-J` | Drags our selection one grid square unit down
 `M-L` | Drags our selection one grid square unit up
 
-#### replacements
+### replacements
 
 Key | Action
 ----| ------
@@ -151,13 +153,12 @@ Key | Action
 `r?` | Replaces selection with `?` characters
 `~` | Switches casing of selection
 
-### visual line mode
-
-### visual block mode
+### mode switches
 
 Key | Action
 ----| ------
 `I` | Block insertion mode
+
 
 ## insert mode
 
@@ -167,10 +168,12 @@ Key | Action
 ----| ------
 `Shift+Enter` | Replace mode on a new line
 
+
 ## replace mode
 
 It's insert mode but text gets replaced by directly typing over it.
 Also `Backspace` does not delete text here.
+
 
 ## command mode
 
@@ -187,6 +190,7 @@ Key | Action
 `Ctrl+N` | Traverse history forwards
 `ArrowUp` | Traverse history backwards
 `ArrowDown` | Traverse history forwards
+
 
 ## find mode
 

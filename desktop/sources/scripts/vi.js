@@ -621,13 +621,8 @@ function Vi (client) {
       }
       e.stopPropagation()
     }
-  }
 
-  this.visualBlockMode = () => {
     const {x,y} = client.cursor
-    client.cursor.selectNoUpdate(x, y, 0, 0)
-    client.acels.set('Vi', 'Visual Line',  'Shift+V', () => { this.switchTo("VISUAL LINE") })
-    this.visualModeCommon()
 
     client.acels.set('Vi', 'Normal mode', 'Escape', () => {
       if (written !== '') {
@@ -678,10 +673,16 @@ function Vi (client) {
     })
   }
 
+  this.visualBlockMode = () => {
+    const {x,y} = client.cursor
+    client.cursor.selectNoUpdate(x, y, 0, 0)
+    client.acels.set('Vi', 'Visual Line',  'Shift+V', () => { this.switchTo("VISUAL LINE") })
+    this.visualModeCommon()
+  }
+
   this.visualLineMode = () => {
     const {x,y} = client.cursor
     client.cursor.selectNoUpdate(0, y, client.orca.w, 0)
-    client.acels.set('Vi', 'Normal mode', 'Escape', () => { client.cursor.x = x; this.switchTo("NORMAL") })
     client.acels.set('Vi', 'Visual Block', 'CmdOrCtrl+V',  () => { this.switchTo("VISUAL BLOCK") })
     this.visualModeCommon()
   }
