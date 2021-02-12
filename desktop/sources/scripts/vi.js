@@ -315,6 +315,7 @@ function Vi (client) {
     client.commander.onKeyDown = (e) => {
       if (this.chordPrefix == 'r') {
         if (e.ctrlKey || e.metaKey || e.altKey || (e.shiftKey && e.key == 'Shift') || e.key == 'CapsLock') { return }
+        if (e.key === '-') { return }
         client.cursor.write(e.key)
         this.resetChord()
         this.normalMode()
@@ -483,6 +484,7 @@ function Vi (client) {
 
     client.commander.onKeyDown = (e) => {
       if (e.ctrlKey || e.metaKey || e.altKey || (e.shiftKey && e.key == 'Shift') || e.key == 'CapsLock') { return }
+      if (e.key === '-') { return }
       client.orca.writeBlock(client.cursor.x+1, client.cursor.y, this.lineRightOfCursor())
       client.cursor.write(e.key, false)
       client.cursor.move(1, 0)
@@ -511,6 +513,7 @@ function Vi (client) {
 
     client.commander.onKeyDown = (e) => {
       if (e.ctrlKey || e.metaKey || e.altKey || (e.shiftKey && e.key == 'Shift') || e.key == 'CapsLock') { return }
+      if (e.key === '-') { return }
       client.cursor.write(e.key, false)
       client.cursor.move(1, 0)
       e.stopPropagation()
@@ -587,6 +590,7 @@ function Vi (client) {
     client.commander.onKeyDown = (e) => {
       if (this.chordPrefix == 'r') {
         if (e.ctrlKey || e.metaKey || e.altKey || (e.shiftKey && e.key == 'Shift') || e.key == 'CapsLock') { return }
+        if (e.key === '-') { return }
         handleReplaceKey(e.key)
       }
       e.stopPropagation()
@@ -641,6 +645,7 @@ function Vi (client) {
 
       client.commander.onKeyDown = (e) => {
         if (e.ctrlKey || e.metaKey || e.altKey || (e.shiftKey && e.key == 'Shift') || e.key == 'CapsLock') { return }
+        if (e.key === '-') { return }
         writeKey(e.key)
         e.stopPropagation()
       }
