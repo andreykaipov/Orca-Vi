@@ -28,7 +28,10 @@ Please see their repo for Orca documentation.
 
 ## info
 
-We start in Vi mode by default. Use `Ctrl+Shift+/` to toggle it.
+We start in Vi mode by default. We can use `Ctrl+Shift+/` to toggle it, but
+that's not really recommended as several Orca internals (`cursor.js`,
+`commander.js`, `history.js`, `accelerators.js`) have changed, so behaviour
+might not be as expected outside Vi mode.
 
 In the tables below, `C` and `M` represent `Ctrl` and `Alt` respectively.
 
@@ -180,8 +183,8 @@ Also `Backspace` does not delete text here.
 Orca's [command](https://github.com/hundredrabbits/Orca#commands) mode.
 
 Orca uses `:` as the separator between command and value, but since we preface
-`:` is in front of our command for a Vi-esque feel, we use a space as the
-separator. For example, `:bpm 80` or `:color ;;ff0`.
+`:` in front of our command for a more Vi-esque feel, we use a space as our
+separator instead. For example, `:bpm 80` or `:color ;;ff0`.
 
 Key | Action
 ----| ------
