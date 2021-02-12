@@ -286,6 +286,16 @@ function Vi (client) {
     client.acels.set('Vi', 'Undo', 'U', () => client.history.undo())
     client.acels.set('Vi', 'Redo', 'CmdOrCtrl+R', () => client.history.redo())
 
+    client.acels.set('Vi', 'Switch casing', 'Shift+~', () => {
+      const a = client.cursor.read().charCodeAt(0)
+      const b = String.fromCharCode(
+        65 <= a && a <= 90 ? a+32 :
+        97 <= a && a <= 122 ? a-32 :
+        a
+      )
+      client.cursor.write(b)
+    })
+
     // Replace is further handled in the overwritten commander since we need to detect which key was pressed
     client.acels.set('Vi', 'Replace', 'R', () => {
       this.chordPrefix = 'r'
@@ -532,6 +542,16 @@ function Vi (client) {
 
     client.acels.set('Vi', 'Copy', 'Y', () => { client.cursor.copy(); this.switchTo("NORMAL") })
     client.acels.set('Vi', 'Cut', 'X', () => { client.cursor.cut(); this.switchTo("NORMAL") })
+
+    client.acels.set('Vi', 'Switch casing', 'Shift+~', () => {
+      const selection = client.cursor.selection()
+      const switched = selection.split('')
+        .map(c => c.charCodeAt(0))
+        .map(a => 65 <= a && a <= 90 ? a+32 : 97 <= a && a <= 122 ? a-32 : a)
+        .map(a => String.fromCharCode(a))
+        .join('')
+      client.orca.writeBlock(client.cursor.minX, client.cursor.minY, switched)
+    })
 
     ;[1,2,3,4,5,6,7,8,9].forEach(n => {
       client.acels.set('Vi', `${n}`, n, () => {
