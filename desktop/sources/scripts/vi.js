@@ -199,40 +199,46 @@ function Vi (client) {
 
     // line start and end
     client.acels.set('Vi', 'Start of line', '0', () => {
+      const {x,y,w,h} = client.cursor
+
       if (this.chordPrefix.endsWith('v')) {
         this.switchTo("VISUAL BLOCK")
         this.resetChord()
-        client.cursor.scaleTo(-client.cursor.x, client.cursor.h)
+        client.cursor.scaleTo(-x, h)
       } else if (this.chordPrefix.endsWith('d')) {
-        const {x,y} = client.cursor
-        client.cursor.selectNoUpdate(x-1, y, -client.cursor.x, 0)
-        client.cursor.cut()
-        client.orca.writeBlock(-1, client.cursor.y, this.lineRightOfCursor())
         client.history.record(client.orca.s)
-        client.cursor.moveTo(0, client.cursor.y)
+        client.cursor.selectNoUpdate(x-1, y, -x, 0)
+        client.cursor.cut()
+        const line = this.lineRightOfCursor()
+        client.orca.writeBlock(0, y, ".".repeat(client.orca.w))
+        client.orca.writeBlock(-1, y, line)
+        client.cursor.moveTo(0, y)
         client.cursor.reset()
         this.resetChord()
+        client.history.record(client.orca.s)
       } else if (!isNaN(this.chordPrefix||'x')) {
         this.chordPrefix += '0'
       } else {
-        client.cursor.moveTo(0, client.cursor.y)
+        client.cursor.moveTo(0, y)
       }
     })
     client.acels.set('Vi', 'End of line', 'Shift+$', () => {
+      const {x,y,w,h} = client.cursor
+
       if (this.chordPrefix.endsWith('v')) {
         this.switchTo("VISUAL BLOCK")
         this.resetChord()
-        client.cursor.scaleTo(client.orca.w-client.cursor.x-1, client.cursor.h)
+        client.cursor.scaleTo(client.orca.w-x-1, h)
       } else if (this.chordPrefix.endsWith('d')) {
-        const {x,y} = client.cursor
+        client.history.record(client.orca.s)
         client.cursor.selectNoUpdate(x, y, client.orca.w, 0)
         client.cursor.cut()
-        client.history.record(client.orca.s)
         client.cursor.move(-1, 0)
         client.cursor.reset()
         this.resetChord()
+        client.history.record(client.orca.s)
       } else {
-        client.cursor.moveTo(client.orca.w, client.cursor.y)
+        client.cursor.moveTo(client.orca.w, y)
       }
     })
 
